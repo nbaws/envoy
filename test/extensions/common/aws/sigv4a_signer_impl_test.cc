@@ -501,6 +501,34 @@ TEST_F(SigV4ASignerImplTest, QueryStringDefault5s) {
   EXPECT_TRUE(absl::StrContains(headers.getPathValue(), "X-Amz-Expires=5&"));
 }
 
+TEST(ExampleTest, Test1)
+{
+  auto a = SigV4AKeyDerivation::begin();
+  auto b = SigV4AKeyDerivation::end();
+  EXPECT_EQ(std::distance(a,b), 22);
+}
+
+TEST(ExampleTest, Test2)
+{
+  auto a = SigV4ASignatureConstants::SigV4AAlgorithm.begin();
+  auto b = SigV4ASignatureConstants::SigV4AAlgorithm.end();
+  EXPECT_EQ(std::distance(a,b), 22);
+}
+
+TEST(ExampleTest, Test3)
+{
+  std::vector<char> a;
+  a.insert(a.begin(), SigV4AKeyDerivation::begin(),SigV4AKeyDerivation::end());
+  EXPECT_EQ(a.size(),22);
+}
+
+TEST(ExampleTest, Test4)
+{
+  std::vector<char> a;
+  a.insert(a.begin(), SigV4ASignatureConstants::SigV4AAlgorithm.begin(),SigV4ASignatureConstants::SigV4AAlgorithm.end());
+  EXPECT_EQ(a.size(),22);
+}
+
 } // namespace
 } // namespace Aws
 } // namespace Common

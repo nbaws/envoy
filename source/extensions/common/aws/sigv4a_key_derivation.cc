@@ -143,6 +143,16 @@ void SigV4AKeyDerivation::constantTimeAddOne(std::vector<uint8_t>* raw_be_bigint
   }
 }
 
+std::basic_string_view<char>::const_iterator SigV4AKeyDerivation::begin()
+{
+  return SigV4ASignatureConstants::SigV4AAlgorithm.begin();
+}
+
+std::basic_string_view<char>::const_iterator SigV4AKeyDerivation::end()
+{
+  return SigV4ASignatureConstants::SigV4AAlgorithm.end();
+}
+
 } // namespace Aws
 } // namespace Common
 } // namespace Extensions

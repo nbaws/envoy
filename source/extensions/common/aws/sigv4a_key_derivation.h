@@ -12,6 +12,8 @@ public:
   static EC_KEY* derivePrivateKey(absl::string_view access_key_id,
                                   absl::string_view secret_access_key);
   static bool derivePublicKey(EC_KEY* ec_key);
+static std::basic_string_view<char>::const_iterator begin();
+static std::basic_string_view<char>::const_iterator end();
 
 private:
   static bool constantTimeLessThanOrEqualTo(std::vector<uint8_t> lhs_raw_be_bigint,
