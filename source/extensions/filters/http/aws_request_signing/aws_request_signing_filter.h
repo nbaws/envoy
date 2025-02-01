@@ -5,10 +5,11 @@
 #include "envoy/stats/scope.h"
 #include "envoy/stats/stats_macros.h"
 
+#include "source/common/common/cancel_wrapper.h"
+#include "source/extensions/common/aws/aws_cluster_manager.h"
+#include "source/extensions/common/aws/credentials_provider.h"
 #include "source/extensions/common/aws/signer.h"
 #include "source/extensions/filters/http/common/pass_through_filter.h"
-#include "source/extensions/common/aws/credentials_provider.h"
-#include "source/common/common/cancel_wrapper.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -46,6 +47,11 @@ public:
   virtual Extensions::Common::Aws::Signer& signer() PURE;
 
   /**
+   * @return the config's credentials provider.
+   */
+  virtual Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() PURE;
+
+  /**
    * @return the filter stats.
    */
   virtual FilterStats& stats() PURE;
@@ -59,8 +65,6 @@ public:
    * @return whether or not to buffer and sign the payload.
    */
   virtual bool useUnsignedPayload() const PURE;
-
-  virtual Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const PURE;
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
@@ -70,18 +74,22 @@ using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
  */
 class FilterConfigImpl : public FilterConfig {
 public:
-  FilterConfigImpl(Extensions::Common::Aws::SignerPtr&& signer, Common::Aws::CredentialsProviderSharedPtr credentials_provider, const std::string& stats_prefix,
-                   Stats::Scope& scope, const std::string& host_rewrite, bool use_unsigned_payload);
+  FilterConfigImpl(
+      Extensions::Common::Aws::SignerPtr&& signer,
+      Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr credentials_provider,
+      const std::string& stats_prefix, Stats::Scope& scope, const std::string& host_rewrite,
+      bool use_unsigned_payload);
 
   Extensions::Common::Aws::Signer& signer() override;
+  Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() override;
+
   FilterStats& stats() override;
   const std::string& hostRewrite() const override;
   bool useUnsignedPayload() const override;
-  Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const override;
 
 private:
   Extensions::Common::Aws::SignerPtr signer_;
-  Common::Aws::CredentialsProviderSharedPtr credentials_provider_;
+  Extensions::Common::Aws::CredentialsProviderSharedPtr credentials_provider_;
   FilterStats stats_;
   std::string host_rewrite_;
   const bool use_unsigned_payload_;
@@ -93,21 +101,23 @@ private:
 class Filter : public Http::PassThroughDecoderFilter, Logger::Loggable<Logger::Id::filter> {
 public:
   Filter(const std::shared_ptr<FilterConfig>& config);
-
+  ~Filter() override {
+      ENVOY_LOG_MISC(debug, "Cancelling pending credentials");
+      cancel_callback_();
+  }
   static FilterStats generateStats(const std::string& prefix, Stats::Scope& scope);
 
   Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap& headers,
                                           bool end_stream) override;
   Http::FilterDataStatus decodeData(Buffer::Instance& data, bool end_stream) override;
 
-
 private:
+  FilterConfig& getConfig() const;
   Http::FilterHeadersStatus
   decodeHeadersCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials);
-Http::FilterDataStatus
- decodeDataCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials);
-
-  FilterConfig& getConfig() const;
+  Http::FilterDataStatus
+  decodeDataCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials);
+  Envoy::CancelWrapper::CancelFunction cancel_callback_;
 
   std::shared_ptr<FilterConfig> config_;
   Http::RequestHeaderMap* request_headers_{};

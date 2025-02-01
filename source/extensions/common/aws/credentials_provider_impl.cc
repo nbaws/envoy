@@ -153,6 +153,17 @@ void MetadataCredentialsProviderBase::onClusterAddOrUpdate() {
   }
 }
 
+
+bool MetadataCredentialsProviderBase::credentialsPending(CredentialsPendingCallback&& cb) {
+  if (cb && credentials_pending_) {
+    ENVOY_LOG_MISC(debug, "Adding credentials pending callback to queue");
+    Thread::LockGuard guard(mu_);
+    credential_pending_callbacks_.push_back(std::move(cb));
+    ENVOY_LOG_MISC(debug, "We have {} pending callbacks", credential_pending_callbacks_.size());
+  }
+  return credentials_pending_;
+}
+
 // Async provider uses its own refresh mechanism. Calling refreshIfNeeded() here is not thread safe.
 Credentials MetadataCredentialsProviderBase::getCredentials() {
   if (context_) {
@@ -213,14 +224,41 @@ void MetadataCredentialsProviderBase::handleFetchDone() {
   }
 }
 
+
 void MetadataCredentialsProviderBase::setCredentialsToAllThreads(
     CredentialsConstUniquePtr&& creds) {
+
+  ENVOY_LOG_MISC(debug, "Setting credentials to all threads");
+
+  std::vector<CredentialsPendingCallback> callbacks_copy;
+
+  {
+    Thread::LockGuard guard(mu_);
+    callbacks_copy = credential_pending_callbacks_;
+    credential_pending_callbacks_.clear();
+    ENVOY_LOG_MISC(debug, "We have {} pending callbacks", callbacks_copy.size());
+  }
+
+  // Call all of our callbacks to unblock pending requests
+  for (const auto& cb : callbacks_copy) {
+    ENVOY_LOG_MISC(debug, "*** Calling pending callback {} {} {}",
+                   creds->accessKeyId().has_value() ? creds->accessKeyId().value() : "",
+                   creds->secretAccessKey().has_value() ? creds->secretAccessKey().value() : "",
+                   creds->sessionToken().has_value() ? creds->sessionToken().value() : "");
+
+    cb(Credentials(creds->accessKeyId().has_value() ? creds->accessKeyId().value() : "",
+                   creds->secretAccessKey().has_value() ? creds->secretAccessKey().value() : "",
+                   creds->sessionToken().has_value() ? creds->sessionToken().value() : ""));
+  }
+
   CredentialsConstSharedPtr shared_credentials = std::move(creds);
   if (tls_slot_) {
     tls_slot_->runOnAllThreads([shared_credentials](OptRef<ThreadLocalCredentialsCache> obj) {
       obj->credentials_ = shared_credentials;
     });
   }
+  // We are now no longer waiting for credentials
+  credentials_pending_.store(false);
 }
 
 CredentialsFileCredentialsProvider::CredentialsFileCredentialsProvider(
@@ -369,6 +407,10 @@ void InstanceProfileCredentialsProvider::refresh() {
     };
     continue_on_async_fetch_failure_ = true;
     continue_on_async_fetch_failure_reason_ = "Token fetch failed, falling back to IMDSv1";
+
+        // mark credentials as pending while async completes
+    credentials_pending_.store(true);
+
     metadata_fetcher_->fetch(token_req_message, Tracing::NullSpan::instance(), *this);
   }
 }
@@ -401,7 +443,12 @@ void InstanceProfileCredentialsProvider::fetchInstanceRole(const std::string&& t
     on_async_fetch_cb_ = [this, token_string = std::move(token_string)](const std::string&& arg) {
       return this->fetchCredentialFromInstanceRoleAsync(std::move(arg), std::move(token_string));
     };
+
+    // mark credentials as pending while async completes
+    credentials_pending_.store(true);
+
     metadata_fetcher_->fetch(message, Tracing::NullSpan::instance(), *this);
+
   }
 }
 
@@ -457,6 +504,10 @@ void InstanceProfileCredentialsProvider::fetchCredentialFromInstanceRole(
     on_async_fetch_cb_ = [this](const std::string&& arg) {
       return this->extractCredentialsAsync(std::move(arg));
     };
+
+    // mark credentials as pending while async completes
+    credentials_pending_.store(true);
+
     metadata_fetcher_->fetch(message, Tracing::NullSpan::instance(), *this);
   }
 }
@@ -611,6 +662,10 @@ void ContainerCredentialsProvider::refresh() {
     on_async_fetch_cb_ = [this](const std::string&& arg) {
       return this->extractCredentials(std::move(arg));
     };
+
+    // mark credentials as pending while async completes
+    credentials_pending_.store(true);
+
     metadata_fetcher_->fetch(message, Tracing::NullSpan::instance(), *this);
   }
 }
@@ -761,6 +816,10 @@ void WebIdentityCredentialsProvider::refresh() {
   on_async_fetch_cb_ = [this](const std::string&& arg) {
     return this->extractCredentials(std::move(arg));
   };
+
+  // mark credentials as pending while async completes
+  credentials_pending_.store(true);
+
   metadata_fetcher_->fetch(message, Tracing::NullSpan::instance(), *this);
 }
 
@@ -920,7 +979,7 @@ CustomCredentialsProviderChain::CustomCredentialsProviderChain(
 
 DefaultCredentialsProviderChain::DefaultCredentialsProviderChain(
     Api::Api& api, ServerFactoryContextOptRef context,
-    ABSL_ATTRIBUTE_UNUSED Singleton::Manager& singleton_manager, absl::string_view region,
+    absl::string_view region,
     const MetadataCredentialsProviderBase::CurlMetadataFetcher& fetch_metadata_using_curl,
     const envoy::extensions::common::aws::v3::AwsCredentialProvider& credential_provider_config,
     const CredentialsProviderChainFactories& factories) {
