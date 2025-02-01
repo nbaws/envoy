@@ -61,7 +61,7 @@ AwsLambdaFilterFactory::getCredentialsProvider(
         server_context, credential_file_config);
   }
   return std::make_shared<Extensions::Common::Aws::DefaultCredentialsProviderChain>(
-      server_context.api(), makeOptRef(server_context), server_context.singletonManager(), region,
+      server_context.api(), makeOptRef(server_context), region,
       nullptr);
 }
 
@@ -79,7 +79,7 @@ absl::StatusOr<Http::FilterFactoryCb> AwsLambdaFilterFactory::createFilterFactor
   auto credentials_provider = getCredentialsProvider(proto_config, server_context, region);
 
   auto signer = std::make_unique<Extensions::Common::Aws::SigV4SignerImpl>(
-      service_name, region, std::move(credentials_provider), server_context,
+      service_name, region, server_context,
       // TODO: extend API to allow specifying header exclusion. ref:
       // https://github.com/envoyproxy/envoy/pull/18998
       Extensions::Common::Aws::AwsSigningHeaderExclusionVector{});
@@ -111,7 +111,7 @@ AwsLambdaFilterFactory::createRouteSpecificFilterConfigTyped(
       getCredentialsProvider(per_route_config.invoke_config(), server_context, region);
 
   auto signer = std::make_unique<Extensions::Common::Aws::SigV4SignerImpl>(
-      service_name, region, std::move(credentials_provider), server_context,
+      service_name, region, server_context,
       // TODO: extend API to allow specifying header exclusion. ref:
       // https://github.com/envoyproxy/envoy/pull/18998
       Extensions::Common::Aws::AwsSigningHeaderExclusionVector{});

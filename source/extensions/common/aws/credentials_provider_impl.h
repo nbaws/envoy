@@ -167,6 +167,8 @@ protected:
   // Set Credentials shared_ptr on all threads.
   void setCredentialsToAllThreads(CredentialsConstUniquePtr&& creds);
 
+  bool credentialsPending(CredentialsPendingCallback&& cb) override;
+
   Api::Api& api_;
   // The optional server factory context.
   ServerFactoryContextOptRef context_;
@@ -209,6 +211,11 @@ protected:
   AwsClusterManagerOptRef aws_cluster_manager_;
   // RAII handle for callbacks from AWS cluster manager
   AwsManagedClusterUpdateCallbacksHandlePtr callback_handle_;
+    Thread::MutexBasicLockable mu_;
+  std::vector<CredentialsPendingCallback> credential_pending_callbacks_ ABSL_GUARDED_BY(mu_) = {};
+  // Are credentials pending?
+  std::atomic<bool> credentials_pending_ = true;
+
 };
 
 /**
@@ -329,6 +336,7 @@ public:
   }
 
   Credentials getCredentials() override;
+  bool credentialsPending(CredentialsPendingCallback&& cb) override;
 
 protected:
   std::list<CredentialsProviderSharedPtr> providers_;
@@ -445,17 +453,17 @@ class DefaultCredentialsProviderChain : public CredentialsProviderChain,
                                         public CredentialsProviderChainFactories {
 public:
   DefaultCredentialsProviderChain(
-      Api::Api& api, ServerFactoryContextOptRef context, Singleton::Manager& singleton_manager,
+      Api::Api& api, ServerFactoryContextOptRef context, 
       absl::string_view region,
       const MetadataCredentialsProviderBase::CurlMetadataFetcher& fetch_metadata_using_curl,
       const envoy::extensions::common::aws::v3::AwsCredentialProvider& credential_provider_config =
           {})
-      : DefaultCredentialsProviderChain(api, context, singleton_manager, region,
+      : DefaultCredentialsProviderChain(api, context,  region,
                                         fetch_metadata_using_curl, credential_provider_config,
                                         *this) {}
 
   DefaultCredentialsProviderChain(
-      Api::Api& api, ServerFactoryContextOptRef context, Singleton::Manager& singleton_manager,
+      Api::Api& api, ServerFactoryContextOptRef context, 
       absl::string_view region,
       const MetadataCredentialsProviderBase::CurlMetadataFetcher& fetch_metadata_using_curl,
       const envoy::extensions::common::aws::v3::AwsCredentialProvider& credential_provider_config,
