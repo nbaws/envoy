@@ -81,13 +81,13 @@ public:
     }
   }
 
-  absl::Status sign(Http::RequestMessage& message, bool sign_body = false,
+  absl::Status sign(Http::RequestMessage& message, Credentials credentials, bool sign_body = false,
                     const absl::string_view override_region = "") override;
-  absl::Status sign(Http::RequestHeaderMap& headers, const std::string& content_hash,
+  absl::Status sign(Http::RequestHeaderMap& headers, Credentials credentials, const std::string& content_hash,
                     const absl::string_view override_region = "") override;
-  absl::Status signEmptyPayload(Http::RequestHeaderMap& headers,
+  absl::Status signEmptyPayload(Http::RequestHeaderMap& headers, Credentials credentials,
                                 const absl::string_view override_region = "") override;
-  absl::Status signUnsignedPayload(Http::RequestHeaderMap& headers,
+  absl::Status signUnsignedPayload(Http::RequestHeaderMap& headers, Credentials credentials,
                                    const absl::string_view override_region = "") override;
 
 protected:

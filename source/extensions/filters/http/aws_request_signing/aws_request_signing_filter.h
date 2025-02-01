@@ -7,6 +7,8 @@
 
 #include "source/extensions/common/aws/signer.h"
 #include "source/extensions/filters/http/common/pass_through_filter.h"
+#include "source/extensions/common/aws/credentials_provider.h"
+#include "source/common/common/cancel_wrapper.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -57,6 +59,8 @@ public:
    * @return whether or not to buffer and sign the payload.
    */
   virtual bool useUnsignedPayload() const PURE;
+
+  virtual Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const PURE;
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
@@ -66,16 +70,18 @@ using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
  */
 class FilterConfigImpl : public FilterConfig {
 public:
-  FilterConfigImpl(Extensions::Common::Aws::SignerPtr&& signer, const std::string& stats_prefix,
+  FilterConfigImpl(Extensions::Common::Aws::SignerPtr&& signer, Common::Aws::CredentialsProviderSharedPtr credentials_provider, const std::string& stats_prefix,
                    Stats::Scope& scope, const std::string& host_rewrite, bool use_unsigned_payload);
 
   Extensions::Common::Aws::Signer& signer() override;
   FilterStats& stats() override;
   const std::string& hostRewrite() const override;
   bool useUnsignedPayload() const override;
+  Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const override;
 
 private:
   Extensions::Common::Aws::SignerPtr signer_;
+  Common::Aws::CredentialsProviderSharedPtr credentials_provider_;
   FilterStats stats_;
   std::string host_rewrite_;
   const bool use_unsigned_payload_;
@@ -94,7 +100,13 @@ public:
                                           bool end_stream) override;
   Http::FilterDataStatus decodeData(Buffer::Instance& data, bool end_stream) override;
 
+
 private:
+  Http::FilterHeadersStatus
+  decodeHeadersCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials);
+Http::FilterDataStatus
+ decodeDataCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials);
+
   FilterConfig& getConfig() const;
 
   std::shared_ptr<FilterConfig> config_;
