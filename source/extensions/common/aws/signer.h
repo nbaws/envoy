@@ -2,6 +2,7 @@
 
 #include "envoy/common/pure.h"
 #include "envoy/http/message.h"
+#include "source/extensions/common/aws/credentials_provider.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -19,7 +20,7 @@ public:
    * @param override_region override the default region that has to be used to sign the request
    * @throws EnvoyException if the request cannot be signed.
    */
-  virtual absl::Status sign(Http::RequestMessage& message, bool sign_body,
+  virtual absl::Status sign(Http::RequestMessage& message, Credentials credentials, bool sign_body,
                             const absl::string_view override_region = "") PURE;
 
   /**
@@ -28,7 +29,7 @@ public:
    * @param override_region override the default region that has to be used to sign the request
    * @throws EnvoyException if the request cannot be signed.
    */
-  virtual absl::Status signEmptyPayload(Http::RequestHeaderMap& headers,
+  virtual absl::Status signEmptyPayload(Http::RequestHeaderMap& headers, Credentials credentials, 
                                         const absl::string_view override_region = "") PURE;
 
   /**
@@ -37,7 +38,7 @@ public:
    * @param override_region override the default region that has to be used to sign the request
    * @throws EnvoyException if the request cannot be signed.
    */
-  virtual absl::Status signUnsignedPayload(Http::RequestHeaderMap& headers,
+  virtual absl::Status signUnsignedPayload(Http::RequestHeaderMap& headers, Credentials credentials, 
                                            const absl::string_view override_region = "") PURE;
 
   /**
@@ -47,7 +48,7 @@ public:
    * @param override_region override the default region that has to be used to sign the request
    * @throws EnvoyException if the request cannot be signed.
    */
-  virtual absl::Status sign(Http::RequestHeaderMap& headers, const std::string& content_hash,
+  virtual absl::Status sign(Http::RequestHeaderMap& headers, Credentials credentials, const std::string& content_hash,
                             const absl::string_view override_region = "") PURE;
 };
 
