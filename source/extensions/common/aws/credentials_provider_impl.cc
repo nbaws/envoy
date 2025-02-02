@@ -913,6 +913,19 @@ void WebIdentityCredentialsProvider::onMetadataError(Failure reason) {
   handleFetchDone();
 }
 
+
+bool CredentialsProviderChain::credentialsPending(CredentialsPendingCallback&& cb) {
+  for (auto& provider : providers_) {
+    auto callback_copy = cb;
+    if (provider->credentialsPending(std::move(callback_copy))) {
+      ENVOY_LOG_MISC(debug, "Credentials are pending");
+      return true;
+    }
+  }
+  ENVOY_LOG_MISC(debug, "Credentials are not pending");
+  return false;
+}
+
 Credentials CredentialsProviderChain::getCredentials() {
   for (auto& provider : providers_) {
     const auto credentials = provider->getCredentials();
