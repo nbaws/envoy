@@ -53,12 +53,13 @@ private:
   absl::optional<std::string> session_token_;
 };
 
+using CredentialsPendingCallback = std::function<void(Credentials credentials)>;
+
 /**
  * Interface for classes able to fetch AWS credentials from the execution environment.
  */
 class CredentialsProvider {
 public:
-  using CredentialsPendingCallback = std::function<void(Credentials credentials)>;
 
   virtual ~CredentialsProvider() = default;
 
