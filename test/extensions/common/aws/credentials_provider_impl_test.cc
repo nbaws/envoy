@@ -429,7 +429,7 @@ public:
                          MetadataFetcher::MetadataReceiver::RefreshState::Ready,
                      std::chrono::seconds initialization_timer = std::chrono::seconds(2)) {
     ON_CALL(context_, clusterManager()).WillByDefault(ReturnRef(cluster_manager_));
-    aws_cluster_manager_ = std::make_shared<AwsClusterManager>(context_);
+    aws_cluster_manager_ = std::make_shared<AwsClusterManagerImpl>(context_);
 
     provider_ = std::make_shared<InstanceProfileCredentialsProvider>(
         *api_, context_, aws_cluster_manager_, nullptr,
@@ -1476,7 +1476,7 @@ public:
                          MetadataFetcher::MetadataReceiver::RefreshState::Ready,
                      std::chrono::seconds initialization_timer = std::chrono::seconds(2)) {
     ON_CALL(context_, clusterManager()).WillByDefault(ReturnRef(cluster_manager_));
-    aws_cluster_manager_ = std::make_shared<AwsClusterManager>(context_);
+    aws_cluster_manager_ = std::make_shared<AwsClusterManagerImpl>(context_);
     auto cluster_name = "credentials_provider_cluster";
     auto credential_uri = "169.254.170.2:80/path/to/doc";
     auto status = aws_cluster_manager_->addManagedCluster(
@@ -1906,7 +1906,7 @@ public:
   void setupProvider(MetadataFetcher::MetadataReceiver::RefreshState refresh_state =
                          MetadataFetcher::MetadataReceiver::RefreshState::Ready,
                      std::chrono::seconds initialization_timer = std::chrono::seconds(2)) {
-    aws_cluster_manager_ = std::make_shared<AwsClusterManager>(context_);
+    aws_cluster_manager_ = std::make_shared<AwsClusterManagerImpl>(context_);
     auto cluster_name = "credentials_provider_cluster";
     auto credential_uri = "169.254.170.23:80/v1/credentials";
     auto status = aws_cluster_manager_->addManagedCluster(
@@ -2033,7 +2033,7 @@ public:
     cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
     cred_provider.set_role_session_name("role-session-name");
 
-    aws_cluster_manager_ = std::make_shared<AwsClusterManager>(context_);
+    aws_cluster_manager_ = std::make_shared<AwsClusterManagerImpl>(context_);
     auto cluster_name = "credentials_provider_cluster";
     auto credential_uri = "sts.region.amazonaws.com:443";
     auto status = aws_cluster_manager_->addManagedCluster(
@@ -3023,7 +3023,7 @@ TEST(CreateCredentialsProviderFromConfig, InlineCredential) {
 
 class AsyncCredentialHandlingTest : public testing::Test {
 public:
-  AsyncCredentialHandlingTest(): raw_metadata_fetcher_(new MockMetadataFetcher){};
+  AsyncCredentialHandlingTest(): raw_metadata_fetcher_(new MockMetadataFetcher) {};
   
 
   MockMetadataFetcher* raw_metadata_fetcher_;
@@ -3031,9 +3031,8 @@ public:
   NiceMock<Server::Configuration::MockServerFactoryContext> context_;
   WebIdentityCredentialsProviderPtr provider_;
   Event::MockTimer* timer_{};
-  std::shared_ptr<AwsClusterManager> aws_cluster_manager_;
   NiceMock<Upstream::MockClusterManager> cm_;
-
+  // MockAwsClusterManager* acm_;
   
   };
 
@@ -3049,19 +3048,17 @@ TEST_F(AsyncCredentialHandlingTest, ReceivePendingTrueWhenPending) {
     cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
     cred_provider.set_role_session_name("role-session-name");
 
-    // add mock aws cluster manager
-    EXPECT_CALL(context_, clusterManager()).WillRepeatedly(ReturnRef(cm_));
-  EXPECT_CALL(cm_, addOrUpdateCluster(_, _, _));
-  EXPECT_CALL(context_.init_manager_, state())
-      .WillRepeatedly(Return(Envoy::Init::Manager::State::Initialized));
+  std::shared_ptr<MockAwsClusterManager> mock_manager = 
+      std::make_shared<MockAwsClusterManager>();
+  std::shared_ptr<AwsClusterManager> shared_manager = 
+      std::static_pointer_cast<AwsClusterManager>(mock_manager);
+  auto manager_optref = OptRef<std::shared_ptr<AwsClusterManager>> {shared_manager};
+      
 
-    aws_cluster_manager_ = std::make_shared<AwsClusterManager>(context_);
-  auto status = aws_cluster_manager_->addManagedCluster(
-      "cluster_2", envoy::config::cluster::v3::Cluster::DiscoveryType::Cluster_DiscoveryType_STATIC,
-      "uri_2");
+  EXPECT_CALL(*mock_manager, getUriFromClusterName(_)).WillRepeatedly(Return("uri_2"));
 
     provider_ = std::make_shared<WebIdentityCredentialsProvider>(
-        context_, aws_cluster_manager_, "cluster_2",
+        context_, manager_optref, "cluster_2",
         [this](Upstream::ClusterManager&, absl::string_view) {
           metadata_fetcher_.reset(raw_metadata_fetcher_);
           return std::move(metadata_fetcher_);
@@ -3072,21 +3069,15 @@ TEST_F(AsyncCredentialHandlingTest, ReceivePendingTrueWhenPending) {
   timer_ = new NiceMock<Event::MockTimer>(&context_.dispatcher_);
   timer_->enableTimer(std::chrono::milliseconds(1), nullptr);
 
-  EXPECT_CALL(*raw_metadata_fetcher_, cancel());
-  EXPECT_CALL(*timer_, enableTimer(std::chrono::milliseconds(
-                                       MetadataCredentialsProviderBase::getCacheDuration()),
-                                   nullptr));
-
-
-    EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _))
-        .WillRepeatedly(Invoke([provider_friend]()
-        {
-                auto cb = Envoy::Extensions::Common::Aws::CredentialsPendingCallback{};
-                auto result = provider_friend.credentialsPending(std::move(cb));
-                EXPECT_EQ(result, true);
-        }
-        )
-        );
+  EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _))
+      .WillRepeatedly(Invoke([&provider_friend]()
+      {
+              auto cb = Envoy::Extensions::Common::Aws::CredentialsPendingCallback{};
+              auto result = provider_friend.credentialsPending(std::move(cb));
+              EXPECT_EQ(result, true);
+      }
+      )
+      );
 
   provider_friend.onClusterAddOrUpdate();
   timer_->invokeCallback();

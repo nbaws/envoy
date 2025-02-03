@@ -966,10 +966,10 @@ CustomCredentialsProviderChain::CustomCredentialsProviderChain(
     const CustomCredentialsProviderChainFactories& factories) {
 
   aws_cluster_manager_ =
-      context.singletonManager().getTyped<Envoy::Extensions::Common::Aws::AwsClusterManager>(
+      context.singletonManager().getTyped<Envoy::Extensions::Common::Aws::AwsClusterManagerImpl>(
           SINGLETON_MANAGER_REGISTERED_NAME(aws_credentials_provider_cluster_manager),
           [&context] {
-            return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManager>(context);
+            return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManagerImpl>(context);
           },
           true);
 
@@ -999,10 +999,10 @@ DefaultCredentialsProviderChain::DefaultCredentialsProviderChain(
 
   if (context) {
     aws_cluster_manager_ =
-        context->singletonManager().getTyped<Envoy::Extensions::Common::Aws::AwsClusterManager>(
+        context->singletonManager().getTyped<Envoy::Extensions::Common::Aws::AwsClusterManagerImpl>(
             SINGLETON_MANAGER_REGISTERED_NAME(aws_credentials_provider_cluster_manager),
             [&context] {
-              return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManager>(
+              return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManagerImpl>(
                   context.value());
             },
             true);

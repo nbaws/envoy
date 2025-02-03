@@ -8,7 +8,7 @@
 #include "source/extensions/common/aws/signer.h"
 
 #include "test/mocks/upstream/cluster_manager.h"
-
+#include "source/extensions/common/aws/aws_cluster_manager.h"
 #include "gmock/gmock.h"
 
 namespace Envoy {
@@ -60,6 +60,20 @@ public:
 class DummyMetadataFetcher {
 public:
   absl::optional<std::string> operator()(Http::RequestMessage&) { return absl::nullopt; }
+};
+
+class MockAwsClusterManager: public AwsClusterManager {
+public:
+  ~MockAwsClusterManager() override = default;
+
+  MOCK_METHOD(absl::Status, addManagedCluster, (absl::string_view cluster_name, const envoy::config::cluster::v3::Cluster::DiscoveryType cluster_type,
+                    absl::string_view uri));
+
+  MOCK_METHOD(absl::StatusOr<AwsManagedClusterUpdateCallbacksHandlePtr>,
+  addManagedClusterUpdateCallbacks,(absl::string_view cluster_name,
+                                   AwsManagedClusterUpdateCallbacks& cb));
+  MOCK_METHOD(absl::StatusOr<std::string>,getUriFromClusterName,(absl::string_view cluster_name));
+  MOCK_METHOD(void, createQueuedClusters, ());
 };
 
 } // namespace Aws
