@@ -969,7 +969,7 @@ CustomCredentialsProviderChain::CustomCredentialsProviderChain(
       context.singletonManager().getTyped<Envoy::Extensions::Common::Aws::AwsClusterManager>(
           SINGLETON_MANAGER_REGISTERED_NAME(aws_cluster_manager),
           [&context] {
-            return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManager>(context);
+            return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManagerImpl>(context);
           },
           true);
 
@@ -1002,7 +1002,7 @@ DefaultCredentialsProviderChain::DefaultCredentialsProviderChain(
         context->singletonManager().getTyped<Envoy::Extensions::Common::Aws::AwsClusterManager>(
             SINGLETON_MANAGER_REGISTERED_NAME(aws_cluster_manager),
             [&context] {
-              return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManager>(
+              return std::make_shared<Envoy::Extensions::Common::Aws::AwsClusterManagerImpl>(
                   context.value());
             },
             true);
