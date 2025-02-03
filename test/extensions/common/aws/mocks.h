@@ -76,6 +76,12 @@ public:
   MOCK_METHOD(void, createQueuedClusters, ());
 };
 
+
+class MockAwsManagedClusterUpdateCallbacks : public AwsManagedClusterUpdateCallbacks {
+public:
+  MOCK_METHOD(void, onClusterAddOrUpdate, ());
+};
+
 } // namespace Aws
 } // namespace Common
 } // namespace Extensions

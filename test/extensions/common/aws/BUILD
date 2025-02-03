@@ -45,6 +45,7 @@ envoy_cc_test(
     srcs = ["aws_cluster_manager_test.cc"],
     rbe_pool = "6gig",
     deps = [
+        ":aws_mocks",
         "//source/extensions/common/aws:aws_cluster_manager_lib",
         "//test/mocks/server:server_factory_context_mocks",
         "@envoy_api//envoy/config/cluster/v3:pkg_cc_proto",
