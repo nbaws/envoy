@@ -1,5 +1,6 @@
 #include "envoy/config/cluster/v3/cluster.pb.h"
 
+#include "test/extensions/common/aws/mocks.h"
 #include "source/extensions/common/aws/aws_cluster_manager.h"
 
 #include "test/mocks/server/server_factory_context.h"
@@ -22,14 +23,9 @@ public:
   NiceMock<Upstream::MockClusterManager> cm_;
 };
 
-class MockAwsManagedClusterUpdateCallbacks : public AwsManagedClusterUpdateCallbacks {
-public:
-  MOCK_METHOD(void, onClusterAddOrUpdate, ());
-};
-
 class AwsClusterManagerFriend {
 public:
-  AwsClusterManagerFriend(std::shared_ptr<AwsClusterManager> aws_cluster_manager)
+  AwsClusterManagerFriend(std::shared_ptr<AwsClusterManagerImpl> aws_cluster_manager)
       : aws_cluster_manager_(aws_cluster_manager) {}
 
   void onClusterAddOrUpdate(absl::string_view cluster_name,
@@ -41,12 +37,12 @@ public:
     return aws_cluster_manager_->onClusterRemoval(cluster_name);
   }
 
-  std::shared_ptr<AwsClusterManager> aws_cluster_manager_;
+  std::shared_ptr<AwsClusterManagerImpl> aws_cluster_manager_;
 };
 
 // Checks that we can add clusters to the cluster manager and that they are de-duped correctly
 TEST_F(AwsClusterManagerTest, AddClusters) {
-  auto aws_cluster_manager = std::make_unique<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_unique<AwsClusterManagerImpl>(context_);
   auto status = aws_cluster_manager->addManagedCluster(
       "cluster_1",
       envoy::config::cluster::v3::Cluster::DiscoveryType::Cluster_DiscoveryType_STRICT_DNS,
@@ -74,20 +70,20 @@ TEST_F(AwsClusterManagerTest, AddClusters) {
 }
 
 TEST_F(AwsClusterManagerTest, CantGetUriForNonExistentCluster) {
-  auto aws_cluster_manager = std::make_unique<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_unique<AwsClusterManagerImpl>(context_);
   auto status = aws_cluster_manager->getUriFromClusterName("cluster_1");
   EXPECT_EQ(status.status().code(), absl::StatusCode::kInvalidArgument);
 }
 
 // Checks that the cluster callbacks are called
 TEST_F(AwsClusterManagerTest, AddClusterCallbacks) {
-  auto callbacks1 = std::make_shared<NiceMock<MockAwsManagedClusterUpdateCallbacks>>();
+  auto callbacks1 = std::make_shared<NiceMock<Envoy::Extensions::Common::Aws::MockAwsManagedClusterUpdateCallbacks>>();
   EXPECT_CALL(*callbacks1, onClusterAddOrUpdate);
   auto callbacks2 = std::make_shared<NiceMock<MockAwsManagedClusterUpdateCallbacks>>();
   EXPECT_CALL(*callbacks2, onClusterAddOrUpdate);
   auto callbacks3 = std::make_shared<NiceMock<MockAwsManagedClusterUpdateCallbacks>>();
   EXPECT_CALL(*callbacks3, onClusterAddOrUpdate);
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto manager_friend = AwsClusterManagerFriend(aws_cluster_manager);
 
   auto status = aws_cluster_manager->addManagedCluster(
@@ -109,7 +105,7 @@ TEST_F(AwsClusterManagerTest, ClusterCallbacksAreDeleted) {
   EXPECT_CALL(*callbacks2, onClusterAddOrUpdate).Times(0);
   auto callbacks3 = std::make_unique<NiceMock<MockAwsManagedClusterUpdateCallbacks>>();
   EXPECT_CALL(*callbacks3, onClusterAddOrUpdate).Times(0);
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto manager_friend = AwsClusterManagerFriend(aws_cluster_manager);
 
   auto status = aws_cluster_manager->addManagedCluster(
@@ -183,7 +179,7 @@ TEST_F(AwsClusterManagerTest, CantAddCallbacksForNonExistentCluster) {
 
 // If the cluster is online, then adding a callback should trigger the callback immediately
 TEST_F(AwsClusterManagerTest, CallbacksTriggeredImmediatelyWhenClusterIsLive) {
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto status = aws_cluster_manager->addManagedCluster(
       "cluster_1",
       envoy::config::cluster::v3::Cluster::DiscoveryType::Cluster_DiscoveryType_STRICT_DNS,
@@ -203,7 +199,7 @@ TEST_F(AwsClusterManagerTest, ClusterManagerCannotAdd) {
   EXPECT_CALL(context_.init_manager_, state())
       .WillRepeatedly(Return(Envoy::Init::Manager::State::Initialized));
 
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto status = aws_cluster_manager->addManagedCluster(
       "cluster_1",
       envoy::config::cluster::v3::Cluster::DiscoveryType::Cluster_DiscoveryType_STRICT_DNS,
@@ -214,7 +210,7 @@ TEST_F(AwsClusterManagerTest, ClusterManagerCannotAdd) {
 
 // Noop test for coverage
 TEST_F(AwsClusterManagerTest, OnClusterRemovalCoverage) {
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto manager_friend = AwsClusterManagerFriend(aws_cluster_manager);
   manager_friend.onClusterRemoval("cluster_1");
 }
