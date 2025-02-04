@@ -156,6 +156,9 @@ protected:
     Thread::MutexBasicLockable lock_;
   };
 
+  // Set anonymous credentials to all threads, update stats and close async
+  void credentialsRetrievalError();
+
   const std::string& clusterName() const { return cluster_name_; }
 
   // Callback from AWS cluster manager, triggered when our cluster comes online
