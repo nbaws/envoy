@@ -1,8 +1,8 @@
 #include "envoy/config/cluster/v3/cluster.pb.h"
 
-#include "test/extensions/common/aws/mocks.h"
 #include "source/extensions/common/aws/aws_cluster_manager.h"
 
+#include "test/extensions/common/aws/mocks.h"
 #include "test/mocks/server/server_factory_context.h"
 
 #include "gmock/gmock.h"
@@ -77,7 +77,8 @@ TEST_F(AwsClusterManagerTest, CantGetUriForNonExistentCluster) {
 
 // Checks that the cluster callbacks are called
 TEST_F(AwsClusterManagerTest, AddClusterCallbacks) {
-  auto callbacks1 = std::make_shared<NiceMock<Envoy::Extensions::Common::Aws::MockAwsManagedClusterUpdateCallbacks>>();
+  auto callbacks1 = std::make_shared<
+      NiceMock<Envoy::Extensions::Common::Aws::MockAwsManagedClusterUpdateCallbacks>>();
   EXPECT_CALL(*callbacks1, onClusterAddOrUpdate);
   auto callbacks2 = std::make_shared<NiceMock<MockAwsManagedClusterUpdateCallbacks>>();
   EXPECT_CALL(*callbacks2, onClusterAddOrUpdate);

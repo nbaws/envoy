@@ -214,11 +214,10 @@ protected:
   AwsClusterManagerOptRef aws_cluster_manager_;
   // RAII handle for callbacks from AWS cluster manager
   AwsManagedClusterUpdateCallbacksHandlePtr callback_handle_;
-    Thread::MutexBasicLockable mu_;
+  Thread::MutexBasicLockable mu_;
   std::vector<CredentialsPendingCallback> credential_pending_callbacks_ ABSL_GUARDED_BY(mu_) = {};
   // Are credentials pending?
   std::atomic<bool> credentials_pending_ = true;
-
 };
 
 /**
@@ -456,18 +455,15 @@ class DefaultCredentialsProviderChain : public CredentialsProviderChain,
                                         public CredentialsProviderChainFactories {
 public:
   DefaultCredentialsProviderChain(
-      Api::Api& api, ServerFactoryContextOptRef context, 
-      absl::string_view region,
+      Api::Api& api, ServerFactoryContextOptRef context, absl::string_view region,
       const MetadataCredentialsProviderBase::CurlMetadataFetcher& fetch_metadata_using_curl,
       const envoy::extensions::common::aws::v3::AwsCredentialProvider& credential_provider_config =
           {})
-      : DefaultCredentialsProviderChain(api, context,  region,
-                                        fetch_metadata_using_curl, credential_provider_config,
-                                        *this) {}
+      : DefaultCredentialsProviderChain(api, context, region, fetch_metadata_using_curl,
+                                        credential_provider_config, *this) {}
 
   DefaultCredentialsProviderChain(
-      Api::Api& api, ServerFactoryContextOptRef context, 
-      absl::string_view region,
+      Api::Api& api, ServerFactoryContextOptRef context, absl::string_view region,
       const MetadataCredentialsProviderBase::CurlMetadataFetcher& fetch_metadata_using_curl,
       const envoy::extensions::common::aws::v3::AwsCredentialProvider& credential_provider_config,
       const CredentialsProviderChainFactories& factories);

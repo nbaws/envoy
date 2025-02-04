@@ -29,7 +29,7 @@ AwsClusterManagerImpl::AwsClusterManagerImpl(Server::Configuration::ServerFactor
 
 absl::StatusOr<AwsManagedClusterUpdateCallbacksHandlePtr>
 AwsClusterManagerImpl::addManagedClusterUpdateCallbacks(absl::string_view cluster_name,
-                                                    AwsManagedClusterUpdateCallbacks& cb) {
+                                                        AwsManagedClusterUpdateCallbacks& cb) {
   auto it = managed_clusters_.find(cluster_name);
   ENVOY_LOG_MISC(debug, "Adding callback for cluster {}", cluster_name);
   if (it == managed_clusters_.end()) {
@@ -49,7 +49,7 @@ AwsClusterManagerImpl::addManagedClusterUpdateCallbacks(absl::string_view cluste
 }
 
 void AwsClusterManagerImpl::onClusterAddOrUpdate(absl::string_view cluster_name,
-                                             Upstream::ThreadLocalClusterCommand&) {
+                                                 Upstream::ThreadLocalClusterCommand&) {
   // Mark our cluster as ready for use
   auto it = managed_clusters_.find(cluster_name);
   if (it != managed_clusters_.end()) {

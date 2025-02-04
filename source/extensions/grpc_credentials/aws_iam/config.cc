@@ -68,15 +68,16 @@ std::shared_ptr<grpc::ChannelCredentials> AwsIamGrpcCredentialsFactory::getChann
         // factory context.
 
         auto credentials_provider = std::make_shared<Common::Aws::DefaultCredentialsProviderChain>(
-            context.api(), absl::nullopt /*Empty factory context*/, 
-            region, Common::Aws::Utility::fetchMetadataWithCurl);
+            context.api(), absl::nullopt /*Empty factory context*/, region,
+            Common::Aws::Utility::fetchMetadataWithCurl);
         auto signer = std::make_unique<Common::Aws::SigV4SignerImpl>(
             config.service_name(), region, context,
             // TODO: extend API to allow specifying header exclusion. ref:
             // https://github.com/envoyproxy/envoy/pull/18998
             Common::Aws::AwsSigningHeaderExclusionVector{});
-        std::shared_ptr<grpc::CallCredentials> new_call_creds = grpc::MetadataCredentialsFromPlugin(
-            std::make_unique<AwsIamHeaderAuthenticator>(std::move(signer), std::move(credentials_provider)));
+        std::shared_ptr<grpc::CallCredentials> new_call_creds =
+            grpc::MetadataCredentialsFromPlugin(std::make_unique<AwsIamHeaderAuthenticator>(
+                std::move(signer), std::move(credentials_provider)));
         if (call_creds == nullptr) {
           call_creds = new_call_creds;
         } else {

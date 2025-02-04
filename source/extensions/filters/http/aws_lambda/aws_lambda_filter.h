@@ -88,7 +88,6 @@ public:
   virtual const std::string& hostRewrite() const PURE;
   virtual Extensions::Common::Aws::Signer& signer() PURE;
   virtual Extensions::Common::Aws::CredentialsProviderSharedPtr& credentialsProvider() PURE;
-
 };
 
 class FilterSettingsImpl : public FilterSettings {
@@ -106,7 +105,7 @@ public:
   Extensions::Common::Aws::CredentialsProviderSharedPtr& credentialsProvider() override {
     return credentials_provider_;
   }
-  
+
 private:
   Arn arn_;
   InvocationMode invocation_mode_;

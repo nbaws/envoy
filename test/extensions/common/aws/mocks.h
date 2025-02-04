@@ -3,12 +3,13 @@
 #include "envoy/http/message.h"
 
 #include "source/common/http/message_impl.h"
+#include "source/extensions/common/aws/aws_cluster_manager.h"
 #include "source/extensions/common/aws/credentials_provider.h"
 #include "source/extensions/common/aws/metadata_fetcher.h"
 #include "source/extensions/common/aws/signer.h"
 
 #include "test/mocks/upstream/cluster_manager.h"
-#include "source/extensions/common/aws/aws_cluster_manager.h"
+
 #include "gmock/gmock.h"
 
 namespace Envoy {
@@ -45,9 +46,12 @@ public:
   ~MockSigner() override;
 
   MOCK_METHOD(absl::Status, sign, (Http::RequestMessage&, Credentials, bool, absl::string_view));
-  MOCK_METHOD(absl::Status, sign, (Http::RequestHeaderMap&, Credentials, const std::string&, absl::string_view));
-  MOCK_METHOD(absl::Status, signEmptyPayload, (Http::RequestHeaderMap&, Credentials, absl::string_view));
-  MOCK_METHOD(absl::Status, signUnsignedPayload, (Http::RequestHeaderMap&, Credentials, absl::string_view));
+  MOCK_METHOD(absl::Status, sign,
+              (Http::RequestHeaderMap&, Credentials, const std::string&, absl::string_view));
+  MOCK_METHOD(absl::Status, signEmptyPayload,
+              (Http::RequestHeaderMap&, Credentials, absl::string_view));
+  MOCK_METHOD(absl::Status, signUnsignedPayload,
+              (Http::RequestHeaderMap&, Credentials, absl::string_view));
 };
 
 class MockFetchMetadata {
@@ -62,20 +66,21 @@ public:
   absl::optional<std::string> operator()(Http::RequestMessage&) { return absl::nullopt; }
 };
 
-class MockAwsClusterManager: public AwsClusterManager {
+class MockAwsClusterManager : public AwsClusterManager {
 public:
   ~MockAwsClusterManager() override = default;
 
-  MOCK_METHOD(absl::Status, addManagedCluster, (absl::string_view cluster_name, const envoy::config::cluster::v3::Cluster::DiscoveryType cluster_type,
-                    absl::string_view uri));
+  MOCK_METHOD(absl::Status, addManagedCluster,
+              (absl::string_view cluster_name,
+               const envoy::config::cluster::v3::Cluster::DiscoveryType cluster_type,
+               absl::string_view uri));
 
   MOCK_METHOD(absl::StatusOr<AwsManagedClusterUpdateCallbacksHandlePtr>,
-  addManagedClusterUpdateCallbacks,(absl::string_view cluster_name,
-                                   AwsManagedClusterUpdateCallbacks& cb));
-  MOCK_METHOD(absl::StatusOr<std::string>,getUriFromClusterName,(absl::string_view cluster_name));
+              addManagedClusterUpdateCallbacks,
+              (absl::string_view cluster_name, AwsManagedClusterUpdateCallbacks& cb));
+  MOCK_METHOD(absl::StatusOr<std::string>, getUriFromClusterName, (absl::string_view cluster_name));
   MOCK_METHOD(void, createQueuedClusters, ());
 };
-
 
 class MockAwsManagedClusterUpdateCallbacks : public AwsManagedClusterUpdateCallbacks {
 public:

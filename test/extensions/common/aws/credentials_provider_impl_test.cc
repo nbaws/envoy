@@ -7,9 +7,10 @@
 
 #include "envoy/extensions/common/aws/v3/credential_provider.pb.h"
 
+#include "source/extensions/common/aws/credentials_provider.h"
 #include "source/extensions/common/aws/credentials_provider_impl.h"
 #include "source/extensions/common/aws/metadata_fetcher.h"
-#include "source/extensions/common/aws/credentials_provider.h"
+
 #include "test/extensions/common/aws/mocks.h"
 #include "test/mocks/api/mocks.h"
 #include "test/mocks/event/mocks.h"
@@ -105,7 +106,9 @@ public:
       : provider_(provider) {}
 
   void onClusterAddOrUpdate() { return provider_->onClusterAddOrUpdate(); }
-  bool credentialsPending(CredentialsPendingCallback&& cb) const { return provider_->credentialsPending(std::move(cb)); }
+  bool credentialsPending(CredentialsPendingCallback&& cb) const {
+    return provider_->credentialsPending(std::move(cb));
+  }
   std::shared_ptr<MetadataCredentialsProviderBase> provider_;
 };
 
@@ -2641,9 +2644,8 @@ TEST_F(DefaultCredentialsProviderChainTest, NoEnvironmentVars) {
               createInstanceProfileCredentialsProvider(Ref(*api_), _, _, _, _, _, _, _));
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, MetadataDisabled) {
@@ -2653,9 +2655,8 @@ TEST_F(DefaultCredentialsProviderChainTest, MetadataDisabled) {
       .Times(0);
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, MetadataNotDisabled) {
@@ -2665,9 +2666,8 @@ TEST_F(DefaultCredentialsProviderChainTest, MetadataNotDisabled) {
               createInstanceProfileCredentialsProvider(Ref(*api_), _, _, _, _, _, _, _));
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, RelativeUri) {
@@ -2678,9 +2678,8 @@ TEST_F(DefaultCredentialsProviderChainTest, RelativeUri) {
                                                  "169.254.170.2:80/path/to/creds", _, _, ""));
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, FullUriNoAuthorizationToken) {
@@ -2690,9 +2689,8 @@ TEST_F(DefaultCredentialsProviderChainTest, FullUriNoAuthorizationToken) {
                               Ref(*api_), _, _, _, _, _, "http://host/path/to/creds", _, _, ""));
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, FullUriWithAuthorizationToken) {
@@ -2704,9 +2702,8 @@ TEST_F(DefaultCredentialsProviderChainTest, FullUriWithAuthorizationToken) {
                                                  "http://host/path/to/creds", _, _, "auth_token"));
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, NoWebIdentityRoleArn) {
@@ -2716,9 +2713,8 @@ TEST_F(DefaultCredentialsProviderChainTest, NoWebIdentityRoleArn) {
               createInstanceProfileCredentialsProvider(Ref(*api_), _, _, _, _, _, _, _));
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, NoWebIdentitySessionName) {
@@ -2731,9 +2727,8 @@ TEST_F(DefaultCredentialsProviderChainTest, NoWebIdentitySessionName) {
               createInstanceProfileCredentialsProvider(Ref(*api_), _, _, _, _, _, _, _));
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, WebIdentityWithSessionName) {
@@ -2747,9 +2742,8 @@ TEST_F(DefaultCredentialsProviderChainTest, WebIdentityWithSessionName) {
 
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 
 TEST_F(DefaultCredentialsProviderChainTest, NoWebIdentityWithBlankConfig) {
@@ -2762,9 +2756,8 @@ TEST_F(DefaultCredentialsProviderChainTest, NoWebIdentityWithBlankConfig) {
 
   envoy::extensions::common::aws::v3::AwsCredentialProvider credential_provider_config = {};
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
 }
 // These tests validate override of default credential provider with custom credential provider
 // settings
@@ -2792,9 +2785,8 @@ TEST_F(DefaultCredentialsProviderChainTest, WebIdentityWithCustomSessionName) {
   credential_provider_config.mutable_assume_role_with_web_identity_provider()
       ->set_role_session_name("custom-role-session-name");
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
   EXPECT_EQ(role_session_name, "custom-role-session-name");
 }
 
@@ -2821,9 +2813,8 @@ TEST_F(DefaultCredentialsProviderChainTest, WebIdentityWithCustomRoleArn) {
   credential_provider_config.mutable_assume_role_with_web_identity_provider()->set_role_arn(
       "custom-role-arn");
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
   EXPECT_EQ(role_arn, "custom-role-arn");
 }
 
@@ -2851,9 +2842,8 @@ TEST_F(DefaultCredentialsProviderChainTest, WebIdentityWithCustomDataSource) {
       ->mutable_web_identity_token_data_source()
       ->set_inline_string("custom_token_string");
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
   EXPECT_EQ(inline_string, "custom_token_string");
 }
 
@@ -2883,9 +2873,8 @@ TEST_F(DefaultCredentialsProviderChainTest, CredentialsFileWithCustomDataSource)
       ->mutable_credentials_data_source()
       ->set_inline_string("custom_inline_string");
 
-  DefaultCredentialsProviderChain chain(*api_, context_,  "region",
-                                        DummyMetadataFetcher(), credential_provider_config,
-                                        factories_);
+  DefaultCredentialsProviderChain chain(*api_, context_, "region", DummyMetadataFetcher(),
+                                        credential_provider_config, factories_);
   EXPECT_EQ(inline_string, "custom_inline_string");
 }
 
@@ -3020,11 +3009,9 @@ TEST(CreateCredentialsProviderFromConfig, InlineCredential) {
   EXPECT_EQ("TestSessionToken", creds.sessionToken().value());
 }
 
-
 class AsyncCredentialHandlingTest : public testing::Test {
 public:
-  AsyncCredentialHandlingTest(): raw_metadata_fetcher_(new MockMetadataFetcher) {};
-  
+  AsyncCredentialHandlingTest() : raw_metadata_fetcher_(new MockMetadataFetcher){};
 
   MockMetadataFetcher* raw_metadata_fetcher_;
   MetadataFetcherPtr metadata_fetcher_;
@@ -3032,100 +3019,89 @@ public:
   WebIdentityCredentialsProviderPtr provider_;
   Event::MockTimer* timer_{};
   NiceMock<Upstream::MockClusterManager> cm_;
-  
-  };
+};
 
 TEST_F(AsyncCredentialHandlingTest, ReceivePendingTrueWhenPending) {
   MetadataFetcher::MetadataReceiver::RefreshState refresh_state =
-                               MetadataFetcher::MetadataReceiver::RefreshState::Ready;
-                           std::chrono::seconds initialization_timer = std::chrono::seconds(2);
-                           
-    envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider cred_provider =
-        {};
+      MetadataFetcher::MetadataReceiver::RefreshState::Ready;
+  std::chrono::seconds initialization_timer = std::chrono::seconds(2);
 
-    cred_provider.mutable_web_identity_token_data_source()->set_inline_string("abced");
-    cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
-    cred_provider.set_role_session_name("role-session-name");
+  envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider cred_provider =
+      {};
 
-  std::shared_ptr<MockAwsClusterManager> mock_manager = 
-      std::make_shared<MockAwsClusterManager>();
-  std::shared_ptr<AwsClusterManager> shared_manager = 
+  cred_provider.mutable_web_identity_token_data_source()->set_inline_string("abced");
+  cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
+  cred_provider.set_role_session_name("role-session-name");
+
+  std::shared_ptr<MockAwsClusterManager> mock_manager = std::make_shared<MockAwsClusterManager>();
+  std::shared_ptr<AwsClusterManager> shared_manager =
       std::static_pointer_cast<AwsClusterManager>(mock_manager);
-  auto manager_optref = OptRef<std::shared_ptr<AwsClusterManager>> {shared_manager};
-      
+  auto manager_optref = OptRef<std::shared_ptr<AwsClusterManager>>{shared_manager};
 
   EXPECT_CALL(*mock_manager, getUriFromClusterName(_)).WillRepeatedly(Return("uri_2"));
 
-    provider_ = std::make_shared<WebIdentityCredentialsProvider>(
-        context_, manager_optref, "cluster_2",
-        [this](Upstream::ClusterManager&, absl::string_view) {
-          metadata_fetcher_.reset(raw_metadata_fetcher_);
-          return std::move(metadata_fetcher_);
-        },
-        refresh_state, initialization_timer, cred_provider);
-    auto provider_friend = MetadataCredentialsProviderBaseFriend(provider_);
+  provider_ = std::make_shared<WebIdentityCredentialsProvider>(
+      context_, manager_optref, "cluster_2",
+      [this](Upstream::ClusterManager&, absl::string_view) {
+        metadata_fetcher_.reset(raw_metadata_fetcher_);
+        return std::move(metadata_fetcher_);
+      },
+      refresh_state, initialization_timer, cred_provider);
+  auto provider_friend = MetadataCredentialsProviderBaseFriend(provider_);
 
   timer_ = new NiceMock<Event::MockTimer>(&context_.dispatcher_);
   timer_->enableTimer(std::chrono::milliseconds(1), nullptr);
 
-  EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _))
-      .WillRepeatedly(Invoke([&provider_friend]()
-      {
-        // This will check that we see true from credentialsPending by the time we call fetch
-              auto cb = Envoy::Extensions::Common::Aws::CredentialsPendingCallback{};
-              auto result = provider_friend.credentialsPending(std::move(cb));
-              EXPECT_EQ(result, true);
-      }
-      )
-      );
+  EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _)).WillRepeatedly(Invoke([&provider_friend]() {
+    // This will check that we see true from credentialsPending by the time we call fetch
+    auto cb = Envoy::Extensions::Common::Aws::CredentialsPendingCallback{};
+    auto result = provider_friend.credentialsPending(std::move(cb));
+    EXPECT_EQ(result, true);
+  }));
 
   provider_friend.onClusterAddOrUpdate();
   timer_->invokeCallback();
-
 }
-
 
 TEST_F(AsyncCredentialHandlingTest, CallbacksCalledWhenCredentialsReturned) {
   MetadataFetcher::MetadataReceiver::RefreshState refresh_state =
-                               MetadataFetcher::MetadataReceiver::RefreshState::Ready;
-                           std::chrono::seconds initialization_timer = std::chrono::seconds(2);
-                           
-    envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider cred_provider =
-        {};
+      MetadataFetcher::MetadataReceiver::RefreshState::Ready;
+  std::chrono::seconds initialization_timer = std::chrono::seconds(2);
 
-    cred_provider.mutable_web_identity_token_data_source()->set_inline_string("abced");
-    cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
-    cred_provider.set_role_session_name("role-session-name");
+  envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider cred_provider =
+      {};
 
-  std::shared_ptr<MockAwsClusterManager> mock_manager = 
-      std::make_shared<MockAwsClusterManager>();
-  std::shared_ptr<AwsClusterManager> shared_manager = 
+  cred_provider.mutable_web_identity_token_data_source()->set_inline_string("abced");
+  cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
+  cred_provider.set_role_session_name("role-session-name");
+
+  std::shared_ptr<MockAwsClusterManager> mock_manager = std::make_shared<MockAwsClusterManager>();
+  std::shared_ptr<AwsClusterManager> shared_manager =
       std::static_pointer_cast<AwsClusterManager>(mock_manager);
-  auto manager_optref = OptRef<std::shared_ptr<AwsClusterManager>> {shared_manager};
-      
+  auto manager_optref = OptRef<std::shared_ptr<AwsClusterManager>>{shared_manager};
 
   EXPECT_CALL(*mock_manager, getUriFromClusterName(_)).WillRepeatedly(Return("uri_2"));
 
-    provider_ = std::make_shared<WebIdentityCredentialsProvider>(
-        context_, manager_optref, "cluster_2",
-        [this](Upstream::ClusterManager&, absl::string_view) {
-          metadata_fetcher_.reset(raw_metadata_fetcher_);
-          return std::move(metadata_fetcher_);
-        },
-        refresh_state, initialization_timer, cred_provider);
-    auto provider_friend = MetadataCredentialsProviderBaseFriend(provider_);
+  provider_ = std::make_shared<WebIdentityCredentialsProvider>(
+      context_, manager_optref, "cluster_2",
+      [this](Upstream::ClusterManager&, absl::string_view) {
+        metadata_fetcher_.reset(raw_metadata_fetcher_);
+        return std::move(metadata_fetcher_);
+      },
+      refresh_state, initialization_timer, cred_provider);
+  auto provider_friend = MetadataCredentialsProviderBaseFriend(provider_);
 
   timer_ = new NiceMock<Event::MockTimer>(&context_.dispatcher_);
   timer_->enableTimer(std::chrono::milliseconds(1), nullptr);
 
   bool cb1call = false;
-  CredentialsPendingCallback cb1( [&cb1call](Credentials) { cb1call = true; } );
+  CredentialsPendingCallback cb1([&cb1call](Credentials) { cb1call = true; });
   bool cb2call = false;
-  CredentialsPendingCallback cb2( [&cb2call](Credentials) { cb2call = true; } );
+  CredentialsPendingCallback cb2([&cb2call](Credentials) { cb2call = true; });
   bool cb3call = false;
-  CredentialsPendingCallback cb3( [&cb3call](Credentials) { cb3call = true; } );
+  CredentialsPendingCallback cb3([&cb3call](Credentials) { cb3call = true; });
 
-auto document = R"EOF(
+  auto document = R"EOF(
 {
   "AssumeRoleWithWebIdentityResponse": {
     "AssumeRoleWithWebIdentityResult": {
@@ -3140,98 +3116,88 @@ auto document = R"EOF(
 }
 )EOF";
 
-     EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _))
-        .WillRepeatedly(Invoke([&provider_friend, &cb1, &cb2, &cb3, document = std::move(document)](
-                                   Http::RequestMessage&, Tracing::Span&,
-                                   MetadataFetcher::MetadataReceiver& receiver) {
-
-        // Register 3 pending callbacks
-              provider_friend.credentialsPending(std::move(cb1));
-              provider_friend.credentialsPending(std::move(cb2));
-              provider_friend.credentialsPending(std::move(cb3));
-              receiver.onMetadataSuccess(std::move(document));
-      }
-      )
-      );
+  EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _))
+      .WillRepeatedly(Invoke(
+          [&provider_friend, &cb1, &cb2, &cb3, document = std::move(document)](
+              Http::RequestMessage&, Tracing::Span&, MetadataFetcher::MetadataReceiver& receiver) {
+            // Register 3 pending callbacks
+            provider_friend.credentialsPending(std::move(cb1));
+            provider_friend.credentialsPending(std::move(cb2));
+            provider_friend.credentialsPending(std::move(cb3));
+            receiver.onMetadataSuccess(std::move(document));
+          }));
 
   provider_friend.onClusterAddOrUpdate();
   timer_->invokeCallback();
-  ASSERT_TRUE( cb1call );
-  ASSERT_TRUE( cb2call );
-  ASSERT_TRUE( cb3call );
+  ASSERT_TRUE(cb1call);
+  ASSERT_TRUE(cb2call);
+  ASSERT_TRUE(cb3call);
   auto cb = Envoy::Extensions::Common::Aws::CredentialsPendingCallback{};
   // We now have credentials so we should have false from pending credentials
   auto result = provider_friend.credentialsPending(std::move(cb));
   ASSERT_FALSE(result);
-
 }
-
 
 TEST_F(AsyncCredentialHandlingTest, AnonymousCredsWhenRetrivalFails) {
   MetadataFetcher::MetadataReceiver::RefreshState refresh_state =
-                               MetadataFetcher::MetadataReceiver::RefreshState::Ready;
-                           std::chrono::seconds initialization_timer = std::chrono::seconds(2);
-                           
-    envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider cred_provider =
-        {};
+      MetadataFetcher::MetadataReceiver::RefreshState::Ready;
+  std::chrono::seconds initialization_timer = std::chrono::seconds(2);
 
-    cred_provider.mutable_web_identity_token_data_source()->set_inline_string("abced");
-    cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
-    cred_provider.set_role_session_name("role-session-name");
+  envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider cred_provider =
+      {};
 
-  std::shared_ptr<MockAwsClusterManager> mock_manager = 
-      std::make_shared<MockAwsClusterManager>();
-  std::shared_ptr<AwsClusterManager> shared_manager = 
+  cred_provider.mutable_web_identity_token_data_source()->set_inline_string("abced");
+  cred_provider.set_role_arn("aws:iam::123456789012:role/arn");
+  cred_provider.set_role_session_name("role-session-name");
+
+  std::shared_ptr<MockAwsClusterManager> mock_manager = std::make_shared<MockAwsClusterManager>();
+  std::shared_ptr<AwsClusterManager> shared_manager =
       std::static_pointer_cast<AwsClusterManager>(mock_manager);
-  auto manager_optref = OptRef<std::shared_ptr<AwsClusterManager>> {shared_manager};
-      
+  auto manager_optref = OptRef<std::shared_ptr<AwsClusterManager>>{shared_manager};
 
   EXPECT_CALL(*mock_manager, getUriFromClusterName(_)).WillRepeatedly(Return("uri_2"));
 
-    provider_ = std::make_shared<WebIdentityCredentialsProvider>(
-        context_, manager_optref, "cluster_2",
-        [this](Upstream::ClusterManager&, absl::string_view) {
-          metadata_fetcher_.reset(raw_metadata_fetcher_);
-          return std::move(metadata_fetcher_);
-        },
-        refresh_state, initialization_timer, cred_provider);
-    auto provider_friend = MetadataCredentialsProviderBaseFriend(provider_);
+  provider_ = std::make_shared<WebIdentityCredentialsProvider>(
+      context_, manager_optref, "cluster_2",
+      [this](Upstream::ClusterManager&, absl::string_view) {
+        metadata_fetcher_.reset(raw_metadata_fetcher_);
+        return std::move(metadata_fetcher_);
+      },
+      refresh_state, initialization_timer, cred_provider);
+  auto provider_friend = MetadataCredentialsProviderBaseFriend(provider_);
 
   timer_ = new NiceMock<Event::MockTimer>(&context_.dispatcher_);
   timer_->enableTimer(std::chrono::milliseconds(1), nullptr);
 
   bool cb1call = false;
-  CredentialsPendingCallback cb1( [&cb1call](Credentials) { cb1call = true; } );
+  CredentialsPendingCallback cb1([&cb1call](Credentials) { cb1call = true; });
   bool cb2call = false;
-  CredentialsPendingCallback cb2( [&cb2call](Credentials) { cb2call = true; } );
+  CredentialsPendingCallback cb2([&cb2call](Credentials) { cb2call = true; });
   bool cb3call = false;
-  CredentialsPendingCallback cb3( [&cb3call](Credentials) { cb3call = true; } );
+  CredentialsPendingCallback cb3([&cb3call](Credentials) { cb3call = true; });
 
-auto document = R"EOF(
+  auto document = R"EOF(
 {
   "Error": "error"
 }
 )EOF";
 
-     EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _))
-        .WillRepeatedly(Invoke([&provider_friend, &cb1, &cb2, &cb3, document = std::move(document)](
-                                   Http::RequestMessage&, Tracing::Span&,
-                                   MetadataFetcher::MetadataReceiver& receiver) {
-
-        // Register 3 pending callbacks
-              provider_friend.credentialsPending(std::move(cb1));
-              provider_friend.credentialsPending(std::move(cb2));
-              provider_friend.credentialsPending(std::move(cb3));
-              receiver.onMetadataSuccess(std::move(document));
-      }
-      )
-      );
+  EXPECT_CALL(*raw_metadata_fetcher_, fetch(_, _, _))
+      .WillRepeatedly(Invoke(
+          [&provider_friend, &cb1, &cb2, &cb3, document = std::move(document)](
+              Http::RequestMessage&, Tracing::Span&, MetadataFetcher::MetadataReceiver& receiver) {
+            // Register 3 pending callbacks
+            provider_friend.credentialsPending(std::move(cb1));
+            provider_friend.credentialsPending(std::move(cb2));
+            provider_friend.credentialsPending(std::move(cb3));
+            receiver.onMetadataSuccess(std::move(document));
+          }));
 
   provider_friend.onClusterAddOrUpdate();
   timer_->invokeCallback();
-  ASSERT_TRUE( cb1call );
-  ASSERT_TRUE( cb2call );
-  ASSERT_TRUE( cb3call );
+  ASSERT_TRUE(cb1call);
+  ASSERT_TRUE(cb2call);
+  ASSERT_TRUE(cb3call);
   auto cb = Envoy::Extensions::Common::Aws::CredentialsPendingCallback{};
   // We now have credentials so we should have false from pending credentials
   auto result = provider_friend.credentialsPending(std::move(cb));
@@ -3240,7 +3206,6 @@ auto document = R"EOF(
   auto creds = provider_->getCredentials();
   ASSERT_FALSE(creds.accessKeyId().has_value());
   ASSERT_FALSE(creds.secretAccessKey().has_value());
-
 }
 
 } // namespace Aws

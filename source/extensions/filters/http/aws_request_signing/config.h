@@ -50,11 +50,9 @@ private:
   createSigner(const AwsRequestSigningProtoConfig& config,
                Server::Configuration::ServerFactoryContext& server_context);
 
-
-absl::StatusOr<Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr>
-createCredentialsProvider(
-    const AwsRequestSigningProtoConfig& config,
-    Server::Configuration::ServerFactoryContext& server_context);
+  absl::StatusOr<Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr>
+  createCredentialsProvider(const AwsRequestSigningProtoConfig& config,
+                            Server::Configuration::ServerFactoryContext& server_context);
 };
 
 using UpstreamAwsRequestSigningFilterFactory = AwsRequestSigningFilterFactory;

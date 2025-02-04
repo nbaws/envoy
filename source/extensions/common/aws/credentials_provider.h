@@ -60,7 +60,6 @@ using CredentialsPendingCallback = std::function<void(Credentials credentials)>;
  */
 class CredentialsProvider {
 public:
-
   virtual ~CredentialsProvider() = default;
 
   /**

@@ -46,7 +46,7 @@ public:
   addManagedCluster(absl::string_view cluster_name,
                     const envoy::config::cluster::v3::Cluster::DiscoveryType cluster_type,
                     absl::string_view uri) PURE;
-                    
+
   virtual absl::StatusOr<AwsManagedClusterUpdateCallbacksHandlePtr>
   addManagedClusterUpdateCallbacks(absl::string_view cluster_name,
                                    AwsManagedClusterUpdateCallbacks& cb) PURE;
@@ -82,7 +82,7 @@ private:
  * be many instantiations of the credential provider for different roles, regions and profiles. The
  * aws cluster manager will dedupe these clusters as required.
  */
-class AwsClusterManagerImpl : public AwsClusterManager, 
+class AwsClusterManagerImpl : public AwsClusterManager,
                               public Envoy::Singleton::Instance,
                               public Upstream::ClusterUpdateCallbacks {
   // Friend class for testing callbacks

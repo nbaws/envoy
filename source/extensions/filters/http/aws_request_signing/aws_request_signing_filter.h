@@ -102,8 +102,8 @@ class Filter : public Http::PassThroughDecoderFilter, Logger::Loggable<Logger::I
 public:
   Filter(const std::shared_ptr<FilterConfig>& config);
   ~Filter() override {
-      ENVOY_LOG_MISC(debug, "Cancelling pending credentials");
-      cancel_callback_();
+    ENVOY_LOG_MISC(debug, "Cancelling pending credentials");
+    cancel_callback_();
   }
   static FilterStats generateStats(const std::string& prefix, Stats::Scope& scope);
 
