@@ -130,7 +130,7 @@ TEST_F(AwsClusterManagerTest, CreateQueuedViaInitManager) {
     init_target_ = target.createHandle("test");
   }));
   EXPECT_CALL(context_, clusterManager()).WillRepeatedly(ReturnRef(cm_));
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto status = aws_cluster_manager->addManagedCluster(
       "cluster_1",
       envoy::config::cluster::v3::Cluster::DiscoveryType::Cluster_DiscoveryType_STRICT_DNS,
@@ -149,7 +149,7 @@ TEST_F(AwsClusterManagerTest, CreateQueuedViaInitManagerWithFailedCluster) {
   EXPECT_CALL(context_, clusterManager()).WillRepeatedly(ReturnRef(cm_));
   EXPECT_CALL(cm_, addOrUpdateCluster(_, _, _)).WillOnce(Return(absl::InternalError("")));
 
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto status = aws_cluster_manager->addManagedCluster(
       "cluster_1",
       envoy::config::cluster::v3::Cluster::DiscoveryType::Cluster_DiscoveryType_STRICT_DNS,
@@ -166,13 +166,13 @@ TEST_F(AwsClusterManagerTest, DontUseInitWhenInitialized) {
       .WillRepeatedly(Return(Envoy::Init::Manager::State::Initialized));
   EXPECT_CALL(context_.init_manager_, add(_)).Times(0);
   EXPECT_CALL(context_, clusterManager()).WillRepeatedly(ReturnRef(cm_));
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
 }
 
 // Cluster callbacks should not be added for non-existent clusters
 TEST_F(AwsClusterManagerTest, CantAddCallbacksForNonExistentCluster) {
 
-  auto aws_cluster_manager = std::make_shared<AwsClusterManager>(context_);
+  auto aws_cluster_manager = std::make_shared<AwsClusterManagerImpl>(context_);
   auto callbacks1 = std::make_unique<NiceMock<MockAwsManagedClusterUpdateCallbacks>>();
   auto status = aws_cluster_manager->addManagedClusterUpdateCallbacks("cluster_1", *callbacks1);
   EXPECT_EQ(absl::StatusCode::kInvalidArgument, status.status().code());

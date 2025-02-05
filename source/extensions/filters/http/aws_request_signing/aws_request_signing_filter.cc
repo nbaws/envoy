@@ -96,10 +96,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
             dispatcher.post([creds = std::move(credentials),
                              cb = std::move(completion_cb)]() mutable { cb(creds); });
           })) {
-    ENVOY_LOG_MISC(debug, "Credentials are pending");
     return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
-  } else {
-    ENVOY_LOG_MISC(debug, "Credentials are not pending");
   }
   return decodeHeadersCredentialsAvailable(config.credentialsProvider()->getCredentials());
 }
@@ -127,19 +124,13 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
                 [this, credentials]() { this->decodeDataCredentialsAvailable(credentials); });
           },
           &cancel_callback_))) {
-    ENVOY_LOG_MISC(debug, "Credentials are pending");
     return Http::FilterDataStatus::StopIterationAndBuffer;
-  } else {
-    ENVOY_LOG_MISC(debug, "Credentials are not pending");
   }
   return decodeDataCredentialsAvailable(config.credentialsProvider()->getCredentials());
 }
 
 Http::FilterDataStatus
 Filter::decodeDataCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials) {
-
-  ENVOY_LOG(debug, "aws request signing decodeHeadersCredentialsAvailable, {}",
-            credentials.accessKeyId().value());
 
   const Buffer::Instance& decoding_buffer = *decoder_callbacks_->decodingBuffer();
   auto& config = getConfig();

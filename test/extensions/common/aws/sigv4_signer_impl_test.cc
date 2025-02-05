@@ -9,7 +9,6 @@
 #include "test/test_common/utility.h"
 
 using testing::NiceMock;
-using testing::Return;
 using testing::ReturnRef;
 
 namespace Envoy {
@@ -21,9 +20,9 @@ namespace {
 class SigV4SignerImplTest : public testing::Test {
 public:
   SigV4SignerImplTest()
-      : credentials_provider_(new NiceMock<MockCredentialsProvider>()),
+      : 
         message_(new Http::RequestMessageImpl()),
-        signer_("service", "region", CredentialsProviderSharedPtr{credentials_provider_}, context_,
+        signer_("service", "region", context_,
                 Extensions::Common::Aws::AwsSigningHeaderExclusionVector{}),
         credentials_("akid", "secret"), token_credentials_("akid", "secret", "token") {
     // 20180102T030405Z
@@ -44,8 +43,6 @@ public:
   void expectSignHeaders(absl::string_view service_name, absl::string_view signature,
                          absl::string_view payload, bool use_unsigned_payload,
                          const absl::string_view override_region = "") {
-    auto* credentials_provider = new NiceMock<MockCredentialsProvider>();
-    EXPECT_CALL(*credentials_provider, getCredentials()).WillOnce(Return(credentials_));
     Http::TestRequestHeaderMapImpl headers{};
     absl::Status status;
     headers.setMethod("GET");
@@ -53,12 +50,12 @@ public:
     headers.addCopy(Http::LowerCaseString("host"), "www.example.com");
 
     SigV4SignerImpl signer(service_name, "region",
-                           CredentialsProviderSharedPtr{credentials_provider}, context_,
+                            context_,
                            Extensions::Common::Aws::AwsSigningHeaderExclusionVector{}, false, 5);
     if (use_unsigned_payload) {
-      status = signer.signUnsignedPayload(headers, override_region);
+      status = signer.signUnsignedPayload(headers, credentials_, override_region);
     } else {
-      status = signer.signEmptyPayload(headers, override_region);
+      status = signer.signEmptyPayload(headers, credentials_, override_region);
     }
     EXPECT_TRUE(status.ok());
 
@@ -76,25 +73,23 @@ public:
                          Http::TestRequestHeaderMapImpl extra_headers,
                          absl::string_view signature_to_match, bool token_credentials,
                          const absl::string_view override_region = "") {
-    auto* credentials_provider = new NiceMock<MockCredentialsProvider>();
-    if (token_credentials) {
-      EXPECT_CALL(*credentials_provider, getCredentials()).WillOnce(Return(token_credentials_));
-    } else {
-      EXPECT_CALL(*credentials_provider, getCredentials()).WillOnce(Return(credentials_));
-    }
 
     SigV4SignerImpl signer(service_name, "region",
-                           CredentialsProviderSharedPtr{credentials_provider}, context_,
+                            context_,
                            Extensions::Common::Aws::AwsSigningHeaderExclusionVector{}, true, 5);
+    absl::Status status;
+    if (token_credentials) {
+     status = signer.signUnsignedPayload(extra_headers, token_credentials_, override_region);
+    } else {
+     status = signer.signUnsignedPayload(extra_headers, credentials_, override_region);
+    }
 
-    auto status = signer.signUnsignedPayload(extra_headers, override_region);
     EXPECT_TRUE(status.ok());
     auto query_parameters = Http::Utility::QueryParamsMulti::parseQueryString(
         extra_headers.Path()->value().getStringView());
     EXPECT_EQ(query_parameters.getFirstValue("X-Amz-Signature"), signature_to_match);
   }
 
-  NiceMock<MockCredentialsProvider>* credentials_provider_;
   Event::SimulatedTimeSystem time_system_;
   NiceMock<Server::Configuration::MockServerFactoryContext> context_;
   Http::RequestMessagePtr message_;
@@ -106,32 +101,28 @@ public:
 
 // No authorization header should be present when the credentials are empty
 TEST_F(SigV4SignerImplTest, AnonymousCredentials) {
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(Credentials()));
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_, Credentials());
   EXPECT_TRUE(status.ok());
   EXPECT_TRUE(message_->headers().get(Http::CustomHeaders::get().Authorization).empty());
 }
 
 // HTTP :method header is required
 TEST_F(SigV4SignerImplTest, MissingMethod) {
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_, credentials_);
   EXPECT_EQ(status.message(), "Message is missing :method header");
   EXPECT_TRUE(message_->headers().get(Http::CustomHeaders::get().Authorization).empty());
 }
 
 // HTTP :path header is required
 TEST_F(SigV4SignerImplTest, MissingPath) {
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
   addMethod("GET");
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_,credentials_);
   EXPECT_EQ(status.message(), "Message is missing :path header");
   EXPECT_TRUE(message_->headers().get(Http::CustomHeaders::get().Authorization).empty());
 }
 
 // Verify that we replace, not duplicate or append to existing headers
 TEST_F(SigV4SignerImplTest, DontDuplicateHeaders) {
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(token_credentials_));
   addMethod("GET");
   addPath("/");
 
@@ -139,7 +130,7 @@ TEST_F(SigV4SignerImplTest, DontDuplicateHeaders) {
   addHeader("x-amz-security-token", "existing_value_2");
   addHeader("x-amz-date", "existing_value_3");
 
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_,token_credentials_);
   EXPECT_EQ(message_->headers().get(Http::CustomHeaders::get().Authorization).size(), 1);
   ENVOY_LOG_MISC(info, "authorization {}",
                  message_->headers()
@@ -173,10 +164,9 @@ TEST_F(SigV4SignerImplTest, DontDuplicateHeaders) {
 TEST_F(SigV4SignerImplTest, SignDateHeader) {
   // These original tests used 2018-01-02 03:04:00 rather than 03:04:05
   time_system_.setSystemTime(std::chrono::milliseconds(1514862240000));
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
   addMethod("GET");
   addPath("/");
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_,credentials_);
   EXPECT_TRUE(status.ok());
   EXPECT_FALSE(message_->headers().get(SigV4SignatureHeaders::get().ContentSha256).empty());
   EXPECT_EQ("20180102T030400Z",
@@ -195,10 +185,9 @@ TEST_F(SigV4SignerImplTest, SignSecurityTokenHeader) {
   // These original tests used 2018-01-02 03:04:00 rather than 03:04:05
   time_system_.setSystemTime(std::chrono::milliseconds(1514862240000));
 
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(token_credentials_));
   addMethod("GET");
   addPath("/");
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_,token_credentials_);
   EXPECT_TRUE(status.ok());
   EXPECT_EQ("token", message_->headers()
                          .get(SigV4SignatureHeaders::get().SecurityToken)[0]
@@ -217,10 +206,9 @@ TEST_F(SigV4SignerImplTest, SignSecurityTokenHeader) {
 TEST_F(SigV4SignerImplTest, SignEmptyContentHeader) {
   // These original tests used 2018-01-02 03:04:00 rather than 03:04:05
   time_system_.setSystemTime(std::chrono::milliseconds(1514862240000));
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
   addMethod("GET");
   addPath("/");
-  auto status = signer_.sign(*message_, true);
+  auto status = signer_.sign(*message_, credentials_,true);
   EXPECT_TRUE(status.ok());
   EXPECT_EQ(SigV4SignatureConstants::HashedEmptyString,
             message_->headers()
@@ -240,11 +228,10 @@ TEST_F(SigV4SignerImplTest, SignEmptyContentHeader) {
 TEST_F(SigV4SignerImplTest, SignContentHeader) {
   // These original tests used 2018-01-02 03:04:00 rather than 03:04:05
   time_system_.setSystemTime(std::chrono::milliseconds(1514862240000));
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
   addMethod("POST");
   addPath("/");
   setBody("test1234");
-  auto status = signer_.sign(*message_, true);
+  auto status = signer_.sign(*message_, credentials_, true);
   EXPECT_TRUE(status.ok());
   EXPECT_EQ("937e8d5fbb48bd4949536cd65b8d35c426b80d2f830c5c308e2cdec422ae2244",
             message_->headers()
@@ -264,11 +251,11 @@ TEST_F(SigV4SignerImplTest, SignContentHeader) {
 TEST_F(SigV4SignerImplTest, SignContentHeaderOverrideRegion) {
   // These original tests used 2018-01-02 03:04:00 rather than 03:04:05
   time_system_.setSystemTime(std::chrono::milliseconds(1514862240000));
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
+
   addMethod("POST");
   addPath("/");
   setBody("test1234");
-  auto status = signer_.sign(*message_, true, "region1");
+  auto status = signer_.sign(*message_, credentials_,true, "region1");
   EXPECT_TRUE(status.ok());
   EXPECT_EQ("937e8d5fbb48bd4949536cd65b8d35c426b80d2f830c5c308e2cdec422ae2244",
             message_->headers()
@@ -289,13 +276,12 @@ TEST_F(SigV4SignerImplTest, SignExtraHeaders) {
   // These original tests used 2018-01-02 03:04:00 rather than 03:04:05
   time_system_.setSystemTime(std::chrono::milliseconds(1514862240000));
 
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
   addMethod("GET");
   addPath("/");
   addHeader("a", "a_value");
   addHeader("b", "b_value");
   addHeader("c", "c_value");
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_,credentials_);
   EXPECT_TRUE(status.ok());
   EXPECT_EQ("AWS4-HMAC-SHA256 Credential=akid/20180102/region/service/aws4_request, "
             "SignedHeaders=a;b;c;x-amz-content-sha256;x-amz-date, "
@@ -310,11 +296,10 @@ TEST_F(SigV4SignerImplTest, SignExtraHeaders) {
 TEST_F(SigV4SignerImplTest, SignHostHeader) {
   // These original tests used 2018-01-02 03:04:00 rather than 03:04:05
   time_system_.setSystemTime(std::chrono::milliseconds(1514862240000));
-  EXPECT_CALL(*credentials_provider_, getCredentials()).WillOnce(Return(credentials_));
   addMethod("GET");
   addPath("/");
   addHeader("host", "www.example.com");
-  auto status = signer_.sign(*message_);
+  auto status = signer_.sign(*message_,credentials_);
   EXPECT_TRUE(status.ok());
   EXPECT_EQ("AWS4-HMAC-SHA256 Credential=akid/20180102/region/service/aws4_request, "
             "SignedHeaders=host;x-amz-content-sha256;x-amz-date, "
@@ -328,10 +313,7 @@ TEST_F(SigV4SignerImplTest, SignHostHeader) {
 // Verify query string signing defaults to 5s
 TEST_F(SigV4SignerImplTest, QueryStringDefault5s) {
 
-  auto* credentials_provider = new NiceMock<MockCredentialsProvider>();
   Http::TestRequestHeaderMapImpl headers{};
-
-  EXPECT_CALL(*credentials_provider, getCredentials()).WillOnce(Return(credentials_));
 
   headers.setMethod("GET");
   // Simple path, 1 extra header
@@ -339,10 +321,10 @@ TEST_F(SigV4SignerImplTest, QueryStringDefault5s) {
   headers.addCopy(Http::LowerCaseString("host"), "example.service.zz");
   headers.addCopy("testheader", "value1");
   SigV4SignerImpl querysigner("service", "region",
-                              CredentialsProviderSharedPtr{credentials_provider}, context_,
+                               context_,
                               Extensions::Common::Aws::AwsSigningHeaderExclusionVector{}, true);
 
-  auto status = querysigner.signUnsignedPayload(headers);
+  auto status = querysigner.signUnsignedPayload(headers,credentials_);
   EXPECT_TRUE(status.ok());
   EXPECT_TRUE(absl::StrContains(headers.getPathValue(), "X-Amz-Expires=5&"));
 }

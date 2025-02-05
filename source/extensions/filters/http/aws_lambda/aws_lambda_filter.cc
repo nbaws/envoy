@@ -140,35 +140,62 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
 
   auto& settings = getSettings();
 
+  request_headers_ = &headers;
+
   if (!end_stream) {
-    request_headers_ = &headers;
     return Http::FilterHeadersStatus::StopIteration;
   }
 
   if (settings.payloadPassthrough()) {
     setLambdaHeaders(headers, settings.arn(), settings.invocationMode(), settings.hostRewrite());
 
-    auto status = settings.signer().signEmptyPayload(
-        headers, settings.credentialsProvider()->getCredentials(), settings.arn().region());
-    if (!status.ok()) {
-      ENVOY_LOG(debug, "signing failed: {}", status.message());
-    }
+    // If we are pending credentials, send the decodeHeadersCredentialsAvailable callback for when
+    // they become available, and stop iteration.
+    auto completion_cb = Envoy::CancelWrapper::cancelWrapped(
+        [this](Envoy::Extensions::Common::Aws::Credentials credentials) {
+          decodeHeadersCredentialsAvailable(credentials);
+        },
+        &cancel_callback_);
 
-    return Http::FilterHeadersStatus::Continue;
+    if (settings.credentialsProvider()->credentialsPending(
+            [&dispatcher = decoder_callbacks_->dispatcher(),
+             completion_cb = std::move(completion_cb)](
+                Envoy::Extensions::Common::Aws::Credentials credentials) mutable {
+              dispatcher.post([creds = std::move(credentials),
+                               cb = std::move(completion_cb)]() mutable { cb(creds); });
+            })) {
+      return Http::FilterHeadersStatus::StopAllIterationAndWatermark;
+    }
+    return decodeHeadersCredentialsAvailable(settings.credentialsProvider()->getCredentials());
   }
 
+  auto status = settings.signer().signEmptyPayload(
+      headers, settings.credentialsProvider()->getCredentials(), settings.arn().region());
+  if (!status.ok()) {
+    ENVOY_LOG(debug, "signing failed: {}", status.message());
+  }
+
+  return Http::FilterHeadersStatus::Continue;
+}
+
+Http::FilterHeadersStatus
+Filter::decodeHeadersCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials) {
+
+  auto& settings = getSettings();
+
   Buffer::OwnedImpl json_buf;
-  jsonizeRequest(headers, nullptr, json_buf);
+  jsonizeRequest(*request_headers_, nullptr, json_buf);
   // We must call setLambdaHeaders *after* the JSON transformation of the request. That way we
   // reflect the actual incoming request headers instead of the overwritten ones.
-  setLambdaHeaders(headers, settings.arn(), settings.invocationMode(), settings.hostRewrite());
-  headers.setContentLength(json_buf.length());
-  headers.setReferenceContentType(Http::Headers::get().ContentTypeValues.Json);
+  setLambdaHeaders(*request_headers_, settings.arn(), settings.invocationMode(),
+                   settings.hostRewrite());
+  request_headers_->setContentLength(json_buf.length());
+  request_headers_->setReferenceContentType(Http::Headers::get().ContentTypeValues.Json);
   auto& hashing_util = Envoy::Common::Crypto::UtilitySingleton::get();
   const auto hash = Hex::encode(hashing_util.getSha256Digest(json_buf));
 
-  auto status = settings.signer().sign(headers, settings.credentialsProvider()->getCredentials(),
-                                       hash, settings.arn().region());
+  auto status =
+      settings.signer().sign(*request_headers_, credentials, hash, settings.arn().region());
   if (!status.ok()) {
     ENVOY_LOG(debug, "signing failed: {}", status.message());
   }
@@ -209,8 +236,26 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
     return Http::FilterDataStatus::StopIterationAndBuffer;
   }
 
-  auto& hashing_util = Envoy::Common::Crypto::UtilitySingleton::get();
   decoder_callbacks_->addDecodedData(data, false);
+  auto& settings = getSettings();
+
+  // If we are pending credentials, send the decodeDataCredentialsAvailable callback for when they
+  // become available, and stop iteration.
+  if (settings.credentialsProvider()->credentialsPending(Envoy::CancelWrapper::cancelWrapped(
+
+          [this, &dispatcher = decoder_callbacks_->dispatcher()](
+              Envoy::Extensions::Common::Aws::Credentials credentials) {
+            dispatcher.post(
+                [this, credentials]() { this->decodeDataCredentialsAvailable(credentials); });
+          },
+          &cancel_callback_))) {
+    return Http::FilterDataStatus::StopIterationAndBuffer;
+  }
+  return decodeDataCredentialsAvailable(settings.credentialsProvider()->getCredentials());
+}
+
+Http::FilterDataStatus
+Filter::decodeDataCredentialsAvailable(Envoy::Extensions::Common::Aws::Credentials credentials) {
 
   const Buffer::Instance& decoding_buffer = *decoder_callbacks_->decodingBuffer();
 
@@ -230,11 +275,11 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
 
   setLambdaHeaders(*request_headers_, settings.arn(), settings.invocationMode(),
                    settings.hostRewrite());
+  auto& hashing_util = Envoy::Common::Crypto::UtilitySingleton::get();
   const auto hash = Hex::encode(hashing_util.getSha256Digest(decoding_buffer));
 
   auto status =
-      settings.signer().sign(*request_headers_, settings.credentialsProvider()->getCredentials(),
-                             hash, settings.arn().region());
+      settings.signer().sign(*request_headers_, credentials, hash, settings.arn().region());
   if (!status.ok()) {
     ENVOY_LOG(debug, "signing failed: {}", status.message());
   }
