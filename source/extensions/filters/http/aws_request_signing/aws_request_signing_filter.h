@@ -44,12 +44,12 @@ public:
   /**
    * @return the config's signer.
    */
-  virtual Extensions::Common::Aws::Signer& signer() PURE;
+  virtual Extensions::Common::Aws::Signer& signer() const PURE;
 
   /**
    * @return the config's credentials provider.
    */
-  virtual Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() PURE;
+  virtual Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const PURE;
 
   /**
    * @return the filter stats.
@@ -80,8 +80,8 @@ public:
       const std::string& stats_prefix, Stats::Scope& scope, const std::string& host_rewrite,
       bool use_unsigned_payload);
 
-  Extensions::Common::Aws::Signer& signer() override;
-  Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() override;
+  Extensions::Common::Aws::Signer& signer() const override;
+  Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const override;
 
   FilterStats& stats() override;
   const std::string& hostRewrite() const override;
@@ -102,9 +102,12 @@ class Filter : public Http::PassThroughDecoderFilter, Logger::Loggable<Logger::I
 public:
   Filter(const std::shared_ptr<FilterConfig>& config);
   ~Filter() override {
-    ENVOY_LOG_MISC(debug, "Cancelling pending credentials");
-    cancel_callback_();
+    if(cancel_callback_)
+    {
+      cancel_callback_();
+    }
   }
+  
   static FilterStats generateStats(const std::string& prefix, Stats::Scope& scope);
 
   Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap& headers,

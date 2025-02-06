@@ -23,10 +23,10 @@ FilterConfigImpl::FilterConfigImpl(Extensions::Common::Aws::SignerPtr&& signer,
 
 Filter::Filter(const std::shared_ptr<FilterConfig>& config) : config_(config) {}
 
-Extensions::Common::Aws::Signer& FilterConfigImpl::signer() { return *signer_; }
+Extensions::Common::Aws::Signer& FilterConfigImpl::signer() const { return *signer_; }
 
 Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr
-FilterConfigImpl::credentialsProvider() {
+FilterConfigImpl::credentialsProvider() const {
   return credentials_provider_;
 }
 

@@ -87,8 +87,8 @@ public:
   virtual bool payloadPassthrough() const PURE;
   virtual InvocationMode invocationMode() const PURE;
   virtual const std::string& hostRewrite() const PURE;
-  virtual Extensions::Common::Aws::Signer& signer() PURE;
-  virtual Extensions::Common::Aws::CredentialsProviderSharedPtr& credentialsProvider() PURE;
+  virtual Extensions::Common::Aws::Signer& signer() const PURE;
+  virtual Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const PURE;
 };
 
 class FilterSettingsImpl : public FilterSettings {
@@ -102,17 +102,18 @@ public:
   bool payloadPassthrough() const override { return payload_passthrough_; }
   InvocationMode invocationMode() const override { return invocation_mode_; }
   const std::string& hostRewrite() const override { return host_rewrite_; }
-  Extensions::Common::Aws::Signer& signer() override { return *signer_; }
-  Extensions::Common::Aws::CredentialsProviderSharedPtr& credentialsProvider() override {
-    return credentials_provider_;
-  }
+  Extensions::Common::Aws::Signer& signer() const override { return *signer_; }
+Envoy::Extensions::Common::Aws::CredentialsProviderSharedPtr
+credentialsProvider() const override {
+  return credentials_provider_;
+}
 
 private:
   Arn arn_;
   InvocationMode invocation_mode_;
   bool payload_passthrough_;
   const std::string host_rewrite_;
-  Extensions::Common::Aws::SignerPtr signer_;
+  const Extensions::Common::Aws::SignerPtr signer_;
   Extensions::Common::Aws::CredentialsProviderSharedPtr credentials_provider_;
 };
 
@@ -123,8 +124,11 @@ class Filter : public Http::PassThroughFilter, Logger::Loggable<Logger::Id::filt
 public:
   Filter(const FilterSettingsSharedPtr& settings, const FilterStats& stats, bool is_upstream);
   ~Filter() override {
-    ENVOY_LOG_MISC(debug, "Cancelling pending credentials");
+if(cancel_callback_)
+{
     cancel_callback_();
+
+}
   }
 
   Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap&, bool end_stream) override;

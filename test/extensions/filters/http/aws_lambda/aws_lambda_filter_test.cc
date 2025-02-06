@@ -39,8 +39,8 @@ public:
   bool payloadPassthrough() const override { return payload_passthrough_; }
   InvocationMode invocationMode() const override { return invocation_mode_; }
   const std::string& hostRewrite() const override { return host_rewrite_; }
-  Extensions::Common::Aws::Signer& signer() override { return *signer_; }
-  Extensions::Common::Aws::CredentialsProviderSharedPtr& credentialsProvider() override { return credentials_provider_;}
+  Extensions::Common::Aws::Signer& signer() const override { return *signer_; }
+  Extensions::Common::Aws::CredentialsProviderSharedPtr credentialsProvider() const override { return credentials_provider_;}
 
   Arn arn_{parseArn("arn:aws:lambda:us-west-2:1337:function:fun").value()};
   InvocationMode invocation_mode_;

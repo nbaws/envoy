@@ -131,9 +131,6 @@ AwsRequestSigningFilterFactory::createCredentialsProvider(
         credential_provider_config = config.credential_provider();
       }
 
-      auto a = Extensions::Common::Aws::DefaultCredentialsProviderChain(
-          server_context.api(), makeOptRef(server_context), region, nullptr,
-          credential_provider_config);
       return std::make_shared<Extensions::Common::Aws::DefaultCredentialsProviderChain>(
           server_context.api(), makeOptRef(server_context), region, nullptr,
           credential_provider_config);

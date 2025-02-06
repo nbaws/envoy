@@ -254,7 +254,7 @@ void MetadataCredentialsProviderBase::setCredentialsToAllThreads(
   }
 
   CredentialsConstSharedPtr shared_credentials = std::move(creds);
-  if (tls_slot_) {
+  if (tls_slot_ && !tls_slot_->isShutdown()) {
     tls_slot_->runOnAllThreads([shared_credentials](OptRef<ThreadLocalCredentialsCache> obj) {
       obj->credentials_ = shared_credentials;
     });
