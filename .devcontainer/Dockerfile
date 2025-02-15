@@ -8,6 +8,8 @@ ENV BUILD_DIR=/build
 ENV ENVOY_STDLIB=libc++
 
 ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -y install wget
+RUN curl -L "http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_20.04/Release.key" | apt-key --keyring /etc/apt/trusted.gpg.d/devel_kubic_libcontainers_stable.gpg add
 RUN apt-get -y update \
   && apt-get -y install --no-install-recommends libpython2.7 net-tools psmisc vim 2>&1 \
   # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
