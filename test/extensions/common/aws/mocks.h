@@ -10,7 +10,7 @@
 #include "source/extensions/common/aws/signer.h"
 #include "source/extensions/common/aws/signers/sigv4a_key_derivation.h"
 
-#include "gmock/gmock.h"
+#include "gmock/gmock.h" // IWYU pragma: export
 
 namespace Envoy {
 namespace Extensions {
@@ -30,6 +30,30 @@ class MockMetadataReceiver : public MetadataFetcher::MetadataReceiver {
 public:
   MOCK_METHOD(void, onMetadataSuccess, (const std::string&& body));
   MOCK_METHOD(void, onMetadataError, (MetadataFetcher::MetadataReceiver::Failure reason));
+};
+
+class MockIAMRolesAnywhereCredentialsProvider : public IAMRolesAnywhereCredentialsProvider {
+public:
+  MockIAMRolesAnywhereCredentialsProvider();
+  ~MockIAMRolesAnywhereCredentialsProvider() override;
+
+  MOCK_METHOD(Credentials, getCredentials, ());
+};
+
+class MockIAMRolesAnywhereX509CredentialsProvider : public IAMRolesAnywhereX509CredentialsProvider {
+public:
+  MockIAMRolesAnywhereX509CredentialsProvider();
+  ~MockIAMRolesAnywhereX509CredentialsProvider() override;
+
+  MOCK_METHOD(X509Credentials, getCredentials, ());
+};
+
+class MockX509CredentialsProvider : public X509CredentialsProvider {
+public:
+  MockX509CredentialsProvider();
+  ~MockX509CredentialsProvider() override;
+
+  MOCK_METHOD(X509Credentials, getCredentials, ());
 };
 
 class MockCredentialsProvider : public CredentialsProvider {
@@ -120,6 +144,12 @@ public:
               (Api::Api&, Server::Configuration::ServerFactoryContext&, AwsClusterManagerOptRef,
                CreateMetadataFetcherCb, MetadataFetcher::MetadataReceiver::RefreshState,
                std::chrono::seconds, absl::string_view));
+  MOCK_METHOD(CredentialsProviderSharedPtr, createIAMRolesAnywhereCredentialsProvider,
+              (Server::Configuration::ServerFactoryContext & context,
+               AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
+               const envoy::extensions::common::aws::v3::IAMRolesAnywhereCredentialProvider&
+                   iam_roles_anywhere_config),
+              (const));
 };
 
 class MockCustomCredentialsProviderChainFactories : public CustomCredentialsProviderChainFactories {
@@ -141,6 +171,12 @@ public:
       CredentialsProviderSharedPtr, createWebIdentityCredentialsProvider,
       (Server::Configuration::ServerFactoryContext&, AwsClusterManagerOptRef, absl::string_view,
        const envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider&));
+  MOCK_METHOD(CredentialsProviderSharedPtr, createIAMRolesAnywhereCredentialsProvider,
+              (Server::Configuration::ServerFactoryContext & context,
+               AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
+               const envoy::extensions::common::aws::v3::IAMRolesAnywhereCredentialProvider&
+                   iam_roles_anywhere_config),
+              (const));
 };
 
 class MockSigV4AKeyDerivation : public SigV4AKeyDerivationBase {

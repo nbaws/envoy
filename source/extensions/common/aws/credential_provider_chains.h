@@ -3,16 +3,21 @@
 #include "envoy/server/factory_context.h"
 
 #include "source/extensions/common/aws/aws_cluster_manager.h"
-#include "source/extensions/common/aws/cached_credentials_provider_base.h"
-#include "source/extensions/common/aws/credential_providers/container_credentials_provider.h"
+#include "source/extensions/common/aws/cached_credentials_provider_base.h" // IWYU pragma: export
+#include "source/extensions/common/aws/credential_providers/container_credentials_provider.h" // IWYU pragma: export
 #include "source/extensions/common/aws/credential_providers/credentials_file_credentials_provider.h"
 #include "source/extensions/common/aws/credential_providers/environment_credentials_provider.h"
-#include "source/extensions/common/aws/credential_providers/instance_profile_credentials_provider.h"
+#include "source/extensions/common/aws/credential_providers/iam_roles_anywhere_credentials_provider.h" // IWYU pragma: export
+#include "source/extensions/common/aws/credential_providers/iam_roles_anywhere_x509_credentials_provider.h" // IWYU pragma: export
+#include "source/extensions/common/aws/credential_providers/instance_profile_credentials_provider.h" // IWYU pragma: export
 #include "source/extensions/common/aws/credential_providers/webidentity_credentials_provider.h"
 #include "source/extensions/common/aws/credentials_provider.h"
 #include "source/extensions/common/aws/metadata_credentials_provider_base.h"
 #include "source/extensions/common/aws/metadata_fetcher.h"
-#include "source/extensions/common/aws/utility.h"
+#include "source/extensions/common/aws/signers/iam_roles_anywhere_sigv4_signer_impl.h" // IWYU pragma: export
+#include "source/extensions/common/aws/utility.h" // IWYU pragma: export
+
+#include "absl/strings/str_replace.h" // IWYU pragma: export
 
 namespace Envoy {
 namespace Extensions {
@@ -51,6 +56,12 @@ public:
       MetadataFetcher::MetadataReceiver::RefreshState refresh_state,
       std::chrono::seconds initialization_timer, absl::string_view cluster_name) PURE;
 
+  virtual CredentialsProviderSharedPtr createIAMRolesAnywhereCredentialsProvider(
+      Server::Configuration::ServerFactoryContext& context,
+      AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
+      const envoy::extensions::common::aws::v3::IAMRolesAnywhereCredentialProvider&
+          iam_roles_anywhere_config) const PURE;
+
 protected:
   std::string stsClusterName(absl::string_view region) {
     return absl::StrCat(STS_TOKEN_CLUSTER, "-", region);
@@ -87,6 +98,12 @@ public:
       AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
       const envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider&
           web_identity_config) PURE;
+
+  virtual CredentialsProviderSharedPtr createIAMRolesAnywhereCredentialsProvider(
+      Server::Configuration::ServerFactoryContext& context,
+      AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
+      const envoy::extensions::common::aws::v3::IAMRolesAnywhereCredentialProvider&
+          iam_roles_anywhere_config) const PURE;
 };
 
 /**
@@ -145,6 +162,12 @@ private:
       const envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider&
           web_identity_config) override;
 
+  CredentialsProviderSharedPtr createIAMRolesAnywhereCredentialsProvider(
+      Server::Configuration::ServerFactoryContext& context,
+      AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
+      const envoy::extensions::common::aws::v3::IAMRolesAnywhereCredentialProvider&
+          iam_roles_anywhere_config) const override;
+
   AwsClusterManagerPtr aws_cluster_manager_;
 };
 
@@ -177,6 +200,12 @@ public:
       AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
       const envoy::extensions::common::aws::v3::AssumeRoleWithWebIdentityCredentialProvider&
           web_identity_config) override;
+
+  CredentialsProviderSharedPtr createIAMRolesAnywhereCredentialsProvider(
+      Server::Configuration::ServerFactoryContext& context,
+      AwsClusterManagerOptRef aws_cluster_manager, absl::string_view region,
+      const envoy::extensions::common::aws::v3::IAMRolesAnywhereCredentialProvider&
+          iam_roles_anywhere_config) const override;
 
 protected:
   std::string sessionName(Api::Api& api) {

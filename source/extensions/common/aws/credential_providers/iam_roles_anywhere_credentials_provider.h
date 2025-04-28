@@ -75,14 +75,13 @@ public:
 private:
   void refresh() override;
   void extractCredentials(const std::string&& credential_document_value);
-
+  bool needsRefresh() override { return true; };
   const std::string role_arn_;
   const std::string role_session_name_;
   const std::string profile_arn_;
   const std::string trust_anchor_arn_;
   const std::string region_;
   absl::optional<uint16_t> session_duration_;
-  Server::Configuration::ServerFactoryContext& server_factory_context_;
   std::unique_ptr<Extensions::Common::Aws::IAMRolesAnywhereSigV4Signer> roles_anywhere_signer_;
 };
 

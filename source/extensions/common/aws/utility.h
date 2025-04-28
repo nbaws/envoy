@@ -3,13 +3,13 @@
 #include "envoy/config/cluster/v3/cluster.pb.h"
 #include "envoy/extensions/upstreams/http/v3/http_protocol_options.pb.h"
 #include "envoy/extensions/upstreams/http/v3/http_protocol_options.pb.validate.h"
-#include "envoy/http/message.h"
+#include "envoy/http/message.h" // IWYU pragma: export
 
-#include "source/common/common/matchers.h"
-#include "source/common/http/headers.h"
-#include "source/common/http/utility.h"
-#include "source/common/json/json_loader.h"
-#include "source/extensions/common/aws/signer_base_impl.h"
+#include "source/common/common/matchers.h"                 // IWYU pragma: export
+#include "source/common/http/headers.h"                    // IWYU pragma: export
+#include "source/common/http/utility.h"                    // IWYU pragma: export
+#include "source/common/json/json_loader.h"                // IWYU pragma: export
+#include "source/extensions/common/aws/signer_base_impl.h" // IWYU pragma: export
 
 namespace Envoy {
 namespace Extensions {
@@ -83,6 +83,16 @@ public:
    */
   static std::string
   joinCanonicalHeaderNames(const std::map<std::string, std::string>& canonical_headers);
+
+  /**
+   * Get the IAM Roles Anywhere Service endpoint for a given region:
+   * rolesanywhere.<region>.amazonaws.com See:
+   * https://docs.aws.amazon.com/rolesanywhere/latest/userguide/authentication-sign-process.html#authentication-task1
+   * @param region An AWS region.
+   * @return an sts endpoint url.
+   */
+
+  static std::string getRolesAnywhereEndpoint(absl::string_view region);
 
   /**
    * Get the Security Token Service endpoint for a given region: sts.<region>.amazonaws.com

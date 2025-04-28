@@ -9,6 +9,19 @@ licenses(["notice"])  # Apache 2
 envoy_package()
 
 envoy_cc_test(
+    name = "iam_roles_anywhere_sigv4_signer_impl_test",
+    srcs = ["iam_roles_anywhere_sigv4_signer_impl_test.cc"],
+    deps = [
+        "//source/extensions/common/aws:credentials_provider_base_lib",
+        "//source/extensions/common/aws/signers:sigv4_signer_impl_lib",
+        "//test/extensions/common/aws:aws_mocks",
+        "//test/mocks/server:server_factory_context_mocks",
+        "//test/test_common:simulated_time_system_lib",
+        "//test/test_common:utility_lib",
+    ],
+)
+
+envoy_cc_test(
     name = "sigv4_signer_impl_test",
     srcs = ["sigv4_signer_impl_test.cc"],
     rbe_pool = "6gig",
